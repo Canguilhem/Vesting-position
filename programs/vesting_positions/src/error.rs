@@ -24,8 +24,26 @@ pub enum ErrorCode {
     AssetMustSign,
     #[msg("Proofs are missing")]
     ProofsMissing,
+    #[msg("Allocation is missing")]
+    AllocationsMissing,
     #[msg("Invalid allocation")]
     InvalidAllocation,
     #[msg("Invalid proofs")]
     InvalidProofs,
+    #[msg("Asset not found")]
+    AssetNotFound,
+    #[msg("Invalid asset")]
+    InvalidAsset,
+    #[msg("Not asset owner")]
+    NotAssetOwner,
+    #[msg("Attribute is missing")]
+    AttributeMissing,
+    #[msg("Attributes not found")]
+    AttributesNotFound,
+    #[msg("Invalid attribute")]
+    InvalidAttribute,
+    #[msg("Position already fully claimed")]
+    AlreadyFullyClaimed,
+    #[msg("Insufficient vault balance")]
+    InsufficientVaultBalance,
 }

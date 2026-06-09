@@ -3,10 +3,42 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
-use mpl_core::{instructions::CreateCollectionV2CpiBuilder, programs::MPL_CORE_ID};
+use mpl_core::{instructions::CreateCollectionV2CpiBuilder, programs::MPL_CORE_ID,  types::{PermanentFreezeDelegate,Plugin, PluginAuthority, PluginAuthorityPair}};
 
 use crate::{error::ErrorCode, Campaign, CAMPAIGN, COLLECTION, UPDATE_AUTH};
 
+// What `#[derive(BundledPubkeys)]` buys us (host/test builds only):
+//
+// 1. Host-only gate. `not(target_os = "solana")` keeps every attribute below
+//    out of the on-chain SBF binary; this is test scaffolding and never ships.
+//
+// 2. Generates two impls next to this struct:
+//      - `From<StakingBundle> for accounts::Initialize`: projects the bundle's
+//        pubkeys into the generated account-metas struct, auto-injecting
+//        well-known program IDs from the field types (here `system_program`
+//        and `token_program`), so the bundle never has to carry them.
+//      - `BuildableIx<StakingBundle> for instruction::Initialize`, with
+//        `type Accounts = accounts::Initialize`. The compile-time pairing that
+//        lets `ctx.tx(..).build(bundle, instruction::Initialize { .. })` find
+//        the matching accounts struct; a mismatched args/accounts pair is a
+//        type error, not a runtime surprise.
+//
+// 3. `bundled_with(..)` names the bundle. `StakingBundle` is a plain struct in
+//    `src/test_helpers.rs` whose fields cover every non-program account any
+//    instruction in this crate names; this instruction's impl projects only
+//    the fields it declares (`admin`/`config`/`collection`/`update_authority`/
+//    `rewards_mint`).
+//
+// N.B. `mpl_core_program` (declared by the other four instructions) is NOT
+// auto-injected: the derive recognises only `Program<System>`,
+// `Program<AssociatedToken>` and `Interface<TokenInterface>`. It rides in the
+// bundle instead, with a hand-rolled `Default` pinning it to the real
+// mpl-core ID (see test_helpers.rs).
+#[cfg_attr(
+    not(target_os = "solana"), //1
+    derive(anchor_litesvm::BundledPubkeys), //2
+    bundled_with(crate::test_helpers::VestingBundle) //3
+)]
 #[derive(Accounts)]
 #[instruction(merkle_root: [u8; 32])]
 pub struct Initialize<'info> {
@@ -36,18 +68,9 @@ pub struct Initialize<'info> {
     #[account(mut,
         associated_token::mint= mint,
         associated_token::authority= creator,
-        associated_token::token_program= associated_token_program
+        associated_token::token_program= token_program
     )]
     pub creator_ata: InterfaceAccount<'info, TokenAccount>,
-
-    #[account(
-        init,
-        payer= creator,
-        associated_token::mint= mint,
-        associated_token::authority= campaign,
-        associated_token::token_program= associated_token_program
-    )]
-    pub campaign_ata: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         init,
@@ -57,6 +80,15 @@ pub struct Initialize<'info> {
         bump
     )]
     pub campaign: Account<'info, Campaign>,
+
+    #[account(
+        init,
+        payer= creator,
+        associated_token::mint= mint,
+        associated_token::authority= campaign,
+        associated_token::token_program= token_program
+    )]
+    pub campaign_ata: InterfaceAccount<'info, TokenAccount>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Interface<'info, TokenInterface>,
@@ -105,8 +137,17 @@ impl<'info> Initialize<'info> {
         &mut self,
         name: String,
         uri: String,
+        is_transferable: bool,
         seeds: &[&[&[u8]]],
     ) -> Result<()> {
+
+        let freeze_plugin = PluginAuthorityPair {
+            plugin: Plugin::PermanentFreezeDelegate(PermanentFreezeDelegate {
+                frozen: !is_transferable,
+            }),
+            authority: Some(PluginAuthority::UpdateAuthority),
+        };
+
         CreateCollectionV2CpiBuilder::new(&self.mpl_core_program.to_account_info())
             .collection(&self.collection.to_account_info())
             .payer(&self.creator.to_account_info())
@@ -114,6 +155,7 @@ impl<'info> Initialize<'info> {
             .system_program(&self.system_program.to_account_info())
             .name(name)
             .uri(uri)
+            .plugins(vec![freeze_plugin]) 
             .invoke_signed(seeds)?;
 
         Ok(())
@@ -172,7 +214,7 @@ impl<'info> Initialize<'info> {
 
         let collection_seeds = campaign.collection_signer_seeds();
 
-        self.init_campaign_collection(name, uri, &[&collection_seeds])?;
+        self.init_campaign_collection(name, uri, campaign.is_transferable, &[&collection_seeds] )?;
 
         self.deposit_tokens(total_deposit)?;
 

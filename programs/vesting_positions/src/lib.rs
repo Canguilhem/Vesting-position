@@ -4,11 +4,16 @@ use anchor_lang::prelude::*;
 
 pub mod constants;
 pub mod error;
+pub mod events;
 pub mod instructions;
 pub mod state;
 pub mod utils;
 
+#[cfg(not(target_os = "solana"))]
+pub mod test_helpers;
+
 pub use constants::*;
+pub use events::*;
 pub use instructions::*;
 pub use state::*;
 pub use utils::*;
@@ -49,7 +54,11 @@ pub mod vesting_positions {
         )
     }
 
-    pub fn claim(ctx: Context<Claim>, proofs: Vec<[u8; 33]>, allocation: u64) -> Result<()> {
+    pub fn claim(
+        ctx: Context<Claim>,
+        proofs: Option<Vec<[u8; 33]>>,
+        allocation: Option<u64>,
+    ) -> Result<()> {
         ctx.accounts.claim(proofs, allocation)
     }
 }

@@ -1,11 +1,28 @@
-use crate::{error::ErrorCode, leaf_hash, verify, Campaign, CAMPAIGN, UPDATE_AUTH};
+use crate::{
+    build_position_attributes, compute_claimable, error::ErrorCode, leaf_hash, verify, Campaign,
+    ClaimEvent, Position, CAMPAIGN, UPDATE_AUTH,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
+    token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
-use mpl_core::{instructions::CreateV2CpiBuilder, programs::MPL_CORE_ID};
+use mpl_core::{
+    accounts::BaseAssetV1,
+    fetch_plugin,
+    instructions::{CreateV2CpiBuilder, UpdatePluginV1CpiBuilder},
+    programs::MPL_CORE_ID,
+    types::{
+        Attributes, Key as MplKey, PermanentFreezeDelegate, Plugin, PluginAuthority,
+        PluginAuthorityPair, PluginType, UpdateAuthority,
+    },
+};
 
+#[cfg_attr(
+    not(target_os = "solana"), //1
+    derive(anchor_litesvm::BundledPubkeys), //2
+    bundled_with(crate::test_helpers::VestingBundle) //3
+)]
 #[derive(Accounts)]
 pub struct Claim<'info> {
     #[account(mut)]
@@ -39,7 +56,7 @@ pub struct Claim<'info> {
         mut,
         associated_token::mint= mint,
         associated_token::authority= campaign,
-        associated_token::token_program= associated_token_program
+        associated_token::token_program= token_program
     )]
     pub campaign_ata: InterfaceAccount<'info, TokenAccount>,
 
@@ -48,7 +65,7 @@ pub struct Claim<'info> {
         payer= user,
         associated_token::mint= mint,
         associated_token::authority= user,
-        associated_token::token_program= associated_token_program
+        associated_token::token_program= token_program
     )]
     pub user_ata: InterfaceAccount<'info, TokenAccount>,
 
@@ -69,28 +86,145 @@ pub struct Claim<'info> {
 }
 
 impl<'info> Claim<'info> {
-    pub fn mint_asset(&mut self) -> Result<()> {
-        let signer_seeds = self.campaign.update_authority_signer_seeds();
+    pub fn claim(
+        &mut self,
+        proofs: Option<Vec<[u8; 33]>>,
+        allocation: Option<u64>,
+    ) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        let is_first = self.asset.data_is_empty();
 
-        // need a way to have distinct name/uri per asset
-        let name = "Vesting position";
-        let uri = "https://example.com/";
+        self.authenticate(is_first, proofs, allocation)?;
+        let state = self.get_position(is_first, allocation)?;
+
+        if !is_first && state.claimed_so_far >= state.allocation {
+            return Err(ErrorCode::AlreadyFullyClaimed.into());
+        }
+
+        let claimable = compute_claimable(&self.campaign, now, state.allocation, state.claimed_so_far)?;
+        let new_claimed = state.claimed_so_far + claimable;
+
+        self.sync_asset(is_first, &state, new_claimed, now)?;
+
+        if claimable > 0 {
+            self.transfer_tokens(claimable)?;
+        }
+
+        if new_claimed >= state.allocation {
+            self.freeze_asset()?;
+        }
+
+        emit!(ClaimEvent {
+            campaign: self.campaign.key(),
+            asset: self.asset.key(),
+            claimant: self.user.key(),
+            original_recipient: state.original_recipient,
+            amount: claimable,
+            claimed_so_far: new_claimed,
+            timestamp: now,
+        });
+
+        Ok(())
+    }
+
+    fn authenticate(
+        &mut self,
+        is_first: bool,
+        proofs: Option<Vec<[u8; 33]>>,
+        allocation: Option<u64>,
+    ) -> Result<()> {
+        if is_first {
+            require!(self.asset.is_signer, ErrorCode::AssetMustSign);
+            let proofs = proofs.ok_or(ErrorCode::ProofsMissing)?;
+            let allocation = allocation.ok_or(ErrorCode::AllocationsMissing)?;
+            self.verify_proofs(proofs, allocation)?;
+        } else {
+            self.verify_ownership()?;
+        }
+        Ok(())
+    }
+
+    fn get_position(&self, is_first: bool, allocation: Option<u64>) -> Result<Position> {
+        if is_first {
+            let allocation = allocation.ok_or(ErrorCode::AllocationsMissing)?;
+            Ok(Position::new(allocation, self.user.key()))
+        } else {
+            let attrs = self.load_attributes()?.ok_or(ErrorCode::AttributesNotFound)?;
+            Position::from_attributes(&attrs)
+        }
+    }
+
+    fn sync_asset(
+        &mut self,
+        is_first: bool,
+        state: &Position,
+        new_claimed: u64,
+        now: i64,
+    ) -> Result<()> {
+        if is_first {
+            self.mint_asset(
+                state.allocation,
+                new_claimed,
+                now,
+                state.original_recipient,
+            )?;
+        } else if new_claimed > state.claimed_so_far {
+            self.update_asset_attributes(
+                state.allocation,
+                new_claimed,
+                now,
+                state.original_recipient,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn mint_asset(
+        &mut self,
+        allocation: u64,
+        claimed_so_far: u64,
+        now: i64,
+        original_recipient: Pubkey,
+    ) -> Result<()> {
+        let signer_seeds = self.campaign.update_authority_signer_seeds();
+        let campaign_key = self.campaign.key();
+        let mint = self.campaign.mint_to_distribute;
+
+        let plugins = vec![
+            PluginAuthorityPair {
+                plugin: Plugin::Attributes(build_position_attributes(
+                    allocation,
+                    claimed_so_far,
+                    now,
+                    &campaign_key,
+                    &original_recipient,
+                    &mint,
+                )),
+                authority: Some(PluginAuthority::UpdateAuthority),
+            },
+            PluginAuthorityPair {
+                plugin: Plugin::PermanentFreezeDelegate(PermanentFreezeDelegate { frozen: false }),
+                authority: Some(PluginAuthority::UpdateAuthority),
+            },
+        ];
 
         CreateV2CpiBuilder::new(&self.mpl_core_program.to_account_info())
             .asset(&self.asset.to_account_info())
             .collection(Some(&self.collection.to_account_info()))
             .authority(Some(&self.update_authority.to_account_info()))
             .payer(&self.user.to_account_info())
+            .owner(Some(&self.user.to_account_info()))
             .update_authority(None)
             .system_program(&self.system_program.to_account_info())
-            .name(name.to_string())
-            .uri(uri.to_string())
+            .name("Vesting position".to_string())
+            .uri("https://example.com/".to_string())
+            .plugins(plugins)
             .invoke_signed(&[&signer_seeds])?;
 
         Ok(())
     }
 
-    pub fn verify_proofs(&mut self, proof: Vec<[u8; 33]>, allocation: u64) -> Result<()> {
+    fn verify_proofs(&self, proof: Vec<[u8; 33]>, allocation: u64) -> Result<()> {
         require!(!proof.is_empty(), ErrorCode::ProofsMissing);
         require!(allocation > 0, ErrorCode::InvalidAllocation);
         let leaf = leaf_hash(&self.user.key(), allocation);
@@ -101,31 +235,102 @@ impl<'info> Claim<'info> {
         Ok(())
     }
 
-    pub fn verify_ownership(&mut self) -> Result<()> {
-        Ok(())
-    }
+    fn verify_ownership(&self) -> Result<()> {
+        require!(!self.asset.data_is_empty(), ErrorCode::AssetNotFound);
+        require!(self.asset.owner == &MPL_CORE_ID, ErrorCode::InvalidAsset);
 
-    pub fn compute_and_transfer(&mut self) -> Result<()> {
-        Ok(())
-    }
+        let asset = BaseAssetV1::from_bytes(&self.asset.try_borrow_data()?)
+            .map_err(|_| ErrorCode::InvalidAsset)?;
 
-    pub fn update_asset_attributes(&mut self) -> Result<()> {
-        Ok(())
-    }
+        require!(asset.key == MplKey::AssetV1, ErrorCode::InvalidAsset);
+        require!(asset.owner == self.user.key(), ErrorCode::NotAssetOwner);
 
-    pub fn claim(&mut self, proofs: Vec<[u8; 33]>, allocation: u64) -> Result<()> {
-        // 1st claim
-        if self.asset.data_is_empty() {
-            require!(self.asset.is_signer, ErrorCode::AssetMustSign);
-
-            self.verify_proofs(proofs, allocation)?;
-            self.mint_asset()?;
-        } else {
-            self.verify_ownership()?;
+        match asset.update_authority {
+            UpdateAuthority::Collection(addr) => {
+                require!(addr == self.campaign.collection, ErrorCode::InvalidCollection);
+            }
+            _ => return Err(ErrorCode::InvalidCollection.into()),
         }
 
-        self.compute_and_transfer()?;
-        self.update_asset_attributes()?;
+        Ok(())
+    }
+
+    fn load_attributes(&self) -> Result<Option<Attributes>> {
+        Ok(
+            fetch_plugin::<BaseAssetV1, Attributes>(
+                &self.asset.to_account_info(),
+                PluginType::Attributes,
+            )
+            .ok()
+            .map(|(_, attrs, _)| attrs),
+        )
+    }
+
+    fn transfer_tokens(&self, amount: u64) -> Result<()> {
+        require!(
+            self.campaign_ata.amount >= amount,
+            ErrorCode::InsufficientVaultBalance
+        );
+
+        let seeds = self.campaign.signer_seeds();
+        transfer_checked(
+            CpiContext::new_with_signer(
+                self.token_program.to_account_info(),
+                TransferChecked {
+                    from: self.campaign_ata.to_account_info(),
+                    mint: self.mint.to_account_info(),
+                    to: self.user_ata.to_account_info(),
+                    authority: self.campaign.to_account_info(),
+                },
+                &[&seeds],
+            ),
+            amount,
+            self.mint.decimals,
+        )?;
+        Ok(())
+    }
+
+    fn update_asset_attributes(
+        &mut self,
+        allocation: u64,
+        claimed_so_far: u64,
+        now: i64,
+        original_recipient: Pubkey,
+    ) -> Result<()> {
+        let auth_seeds = self.campaign.update_authority_signer_seeds();
+        let campaign_key = self.campaign.key();
+        let mint = self.campaign.mint_to_distribute;
+
+        UpdatePluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
+            .asset(&self.asset.to_account_info())
+            .collection(Some(&self.collection.to_account_info()))
+            .payer(&self.user.to_account_info())
+            .authority(Some(&self.update_authority.to_account_info()))
+            .system_program(&self.system_program.to_account_info())
+            .plugin(Plugin::Attributes(build_position_attributes(
+                allocation,
+                claimed_so_far,
+                now,
+                &campaign_key,
+                &original_recipient,
+                &mint,
+            )))
+            .invoke_signed(&[&auth_seeds])?;
+        Ok(())
+    }
+
+    fn freeze_asset(&mut self) -> Result<()> {
+        let auth_seeds = self.campaign.update_authority_signer_seeds();
+        UpdatePluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
+            .asset(&self.asset.to_account_info())
+            .collection(Some(&self.collection.to_account_info()))
+            .payer(&self.user.to_account_info())
+            .authority(Some(&self.update_authority.to_account_info()))
+            .system_program(&self.system_program.to_account_info())
+            .plugin(Plugin::PermanentFreezeDelegate(PermanentFreezeDelegate {
+                frozen: true,
+            }))
+            .invoke_signed(&[&auth_seeds])?;
         Ok(())
     }
 }
