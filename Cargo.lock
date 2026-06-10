@@ -5584,7 +5584,10 @@ dependencies = [
  "anchor-litesvm",
  "anchor-spl",
  "mpl-core",
+ "serde",
+ "serde_json",
  "sha3",
+ "solana-sdk",
 ]
 
 [[package]]

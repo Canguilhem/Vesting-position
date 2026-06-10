@@ -32,3 +32,9 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"
 
 [target.'cfg(not(target_os = "solana"))'.dependencies]
 anchor-litesvm = { git = "https://github.com/cds-rs/anchor-litesvm", branch = "compat/anchor-0.31" }
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+solana-sdk = "=2.2.1"
+sha3 = "0.10"

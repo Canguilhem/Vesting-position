@@ -1,6 +1,6 @@
 use crate::{
     build_position_attributes, compute_claimable, error::ErrorCode, leaf_hash, verify, Campaign,
-    ClaimEvent, Position, CAMPAIGN, UPDATE_AUTH,
+    ClaimEvent, ClaimReceipt, Position, ASSET, CAMPAIGN, CLAIM, UPDATE_AUTH,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::{
@@ -27,10 +27,6 @@ use mpl_core::{
 pub struct Claim<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-
-    /// CHECK: empty + signer on first claim; existing asset on subsequent claims
-    #[account(mut)]
-    pub asset: UncheckedAccount<'info>,
 
     /// CHECK: using a pda instead of a client signer
     #[account(
@@ -76,6 +72,24 @@ pub struct Claim<'info> {
     )]
     pub campaign: Account<'info, Campaign>,
 
+    /// CHECK: position NFT — PDA `[asset, campaign, original_recipient]` on first claim;
+    /// existing mpl-core asset (any owner) on subsequent claims
+    #[account(mut)]
+    pub asset: UncheckedAccount<'info>,
+
+    #[account(
+        init_if_needed,
+        payer=user,
+        space= ClaimReceipt::DISCRIMINATOR.len() + ClaimReceipt::INIT_SPACE,
+        seeds=[
+            CLAIM,
+            campaign.key().as_ref(),
+            user.key().as_ref()
+        ],
+        bump
+    )]
+    pub claim_receipt: Account<'info, ClaimReceipt>,
+
     pub system_program: Program<'info, System>,
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -86,13 +100,14 @@ pub struct Claim<'info> {
 }
 
 impl<'info> Claim<'info> {
-    pub fn claim(
-        &mut self,
-        proofs: Option<Vec<[u8; 33]>>,
-        allocation: Option<u64>,
-    ) -> Result<()> {
+    pub fn claim(&mut self, proofs: Option<Vec<[u8; 33]>>, allocation: Option<u64>) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
-        let is_first = self.asset.data_is_empty();
+        let is_first =
+            self.claim_receipt.claimer == Pubkey::default() && self.asset.data_is_empty();
+
+        if proofs.is_some() || allocation.is_some() {
+            require!(is_first, ErrorCode::AlreadyClaimed);
+        }
 
         self.authenticate(is_first, proofs, allocation)?;
         let state = self.get_position(is_first, allocation)?;
@@ -101,7 +116,8 @@ impl<'info> Claim<'info> {
             return Err(ErrorCode::AlreadyFullyClaimed.into());
         }
 
-        let claimable = compute_claimable(&self.campaign, now, state.allocation, state.claimed_so_far)?;
+        let claimable =
+            compute_claimable(&self.campaign, now, state.allocation, state.claimed_so_far)?;
         let new_claimed = state.claimed_so_far + claimable;
 
         self.sync_asset(is_first, &state, new_claimed, now)?;
@@ -134,10 +150,17 @@ impl<'info> Claim<'info> {
         allocation: Option<u64>,
     ) -> Result<()> {
         if is_first {
-            require!(self.asset.is_signer, ErrorCode::AssetMustSign);
+            require!(self.asset.data_is_empty(), ErrorCode::AssetNotFound);
+            self.verify_asset_pda()?;
             let proofs = proofs.ok_or(ErrorCode::ProofsMissing)?;
             let allocation = allocation.ok_or(ErrorCode::AllocationsMissing)?;
             self.verify_proofs(proofs, allocation)?;
+
+            self.claim_receipt.set_inner(ClaimReceipt {
+                claimer: self.user.key(),
+                allocation: allocation,
+                asset: self.asset.key(),
+            });
         } else {
             self.verify_ownership()?;
         }
@@ -149,7 +172,9 @@ impl<'info> Claim<'info> {
             let allocation = allocation.ok_or(ErrorCode::AllocationsMissing)?;
             Ok(Position::new(allocation, self.user.key()))
         } else {
-            let attrs = self.load_attributes()?.ok_or(ErrorCode::AttributesNotFound)?;
+            let attrs = self
+                .load_attributes()?
+                .ok_or(ErrorCode::AttributesNotFound)?;
             Position::from_attributes(&attrs)
         }
     }
@@ -162,12 +187,7 @@ impl<'info> Claim<'info> {
         now: i64,
     ) -> Result<()> {
         if is_first {
-            self.mint_asset(
-                state.allocation,
-                new_claimed,
-                now,
-                state.original_recipient,
-            )?;
+            self.mint_asset(state.allocation, new_claimed, now, state.original_recipient)?;
         } else if new_claimed > state.claimed_so_far {
             self.update_asset_attributes(
                 state.allocation,
@@ -186,8 +206,24 @@ impl<'info> Claim<'info> {
         now: i64,
         original_recipient: Pubkey,
     ) -> Result<()> {
-        let signer_seeds = self.campaign.update_authority_signer_seeds();
+        let auth_seeds = self.campaign.update_authority_signer_seeds();
         let campaign_key = self.campaign.key();
+        let user_key = self.user.key();
+        let (_, asset_bump) = Pubkey::find_program_address(
+            &[
+                ASSET,
+                campaign_key.as_ref(),
+                user_key.as_ref(),
+            ],
+            &crate::ID,
+        );
+        let asset_bump_bytes = [asset_bump];
+        let asset_seeds = [
+            ASSET,
+            campaign_key.as_ref(),
+            user_key.as_ref(),
+            asset_bump_bytes.as_ref(),
+        ];
         let mint = self.campaign.mint_to_distribute;
 
         let plugins = vec![
@@ -219,8 +255,21 @@ impl<'info> Claim<'info> {
             .name("Vesting position".to_string())
             .uri("https://example.com/".to_string())
             .plugins(plugins)
-            .invoke_signed(&[&signer_seeds])?;
+            .invoke_signed(&[&asset_seeds, &auth_seeds])?;
 
+        Ok(())
+    }
+
+    fn verify_asset_pda(&self) -> Result<()> {
+        let (expected, _) = Pubkey::find_program_address(
+            &[
+                ASSET,
+                self.campaign.key().as_ref(),
+                self.user.key().as_ref(),
+            ],
+            &crate::ID,
+        );
+        require_keys_eq!(self.asset.key(), expected, ErrorCode::InvalidAsset);
         Ok(())
     }
 
@@ -247,7 +296,10 @@ impl<'info> Claim<'info> {
 
         match asset.update_authority {
             UpdateAuthority::Collection(addr) => {
-                require!(addr == self.campaign.collection, ErrorCode::InvalidCollection);
+                require!(
+                    addr == self.campaign.collection,
+                    ErrorCode::InvalidCollection
+                );
             }
             _ => return Err(ErrorCode::InvalidCollection.into()),
         }
@@ -256,14 +308,12 @@ impl<'info> Claim<'info> {
     }
 
     fn load_attributes(&self) -> Result<Option<Attributes>> {
-        Ok(
-            fetch_plugin::<BaseAssetV1, Attributes>(
-                &self.asset.to_account_info(),
-                PluginType::Attributes,
-            )
-            .ok()
-            .map(|(_, attrs, _)| attrs),
+        Ok(fetch_plugin::<BaseAssetV1, Attributes>(
+            &self.asset.to_account_info(),
+            PluginType::Attributes,
         )
+        .ok()
+        .map(|(_, attrs, _)| attrs))
     }
 
     fn transfer_tokens(&self, amount: u64) -> Result<()> {

@@ -9,6 +9,12 @@ pub const COLLECTION: &[u8] = b"collection";
 #[constant]
 pub const CAMPAIGN: &[u8] = b"campaign";
 
+#[constant]
+pub const CLAIM: &[u8] = b"claim";
+
+#[constant]
+pub const ASSET: &[u8] = b"asset";
+
 pub const ATTR_ALLOCATION: &str = "allocation";
 pub const ATTR_CLAIMED: &str = "claimed_so_far";
 pub const ATTR_LAST_CLAIM: &str = "last_claim_timestamp";

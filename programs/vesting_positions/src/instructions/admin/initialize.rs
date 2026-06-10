@@ -3,7 +3,11 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
-use mpl_core::{instructions::CreateCollectionV2CpiBuilder, programs::MPL_CORE_ID,  types::{PermanentFreezeDelegate,Plugin, PluginAuthority, PluginAuthorityPair}};
+use mpl_core::{
+    instructions::CreateCollectionV2CpiBuilder,
+    programs::MPL_CORE_ID,
+    types::{PermanentFreezeDelegate, Plugin, PluginAuthority, PluginAuthorityPair},
+};
 
 use crate::{error::ErrorCode, Campaign, CAMPAIGN, COLLECTION, UPDATE_AUTH};
 
@@ -140,7 +144,6 @@ impl<'info> Initialize<'info> {
         is_transferable: bool,
         seeds: &[&[&[u8]]],
     ) -> Result<()> {
-
         let freeze_plugin = PluginAuthorityPair {
             plugin: Plugin::PermanentFreezeDelegate(PermanentFreezeDelegate {
                 frozen: !is_transferable,
@@ -155,7 +158,7 @@ impl<'info> Initialize<'info> {
             .system_program(&self.system_program.to_account_info())
             .name(name)
             .uri(uri)
-            .plugins(vec![freeze_plugin]) 
+            .plugins(vec![freeze_plugin])
             .invoke_signed(seeds)?;
 
         Ok(())
@@ -214,7 +217,7 @@ impl<'info> Initialize<'info> {
 
         let collection_seeds = campaign.collection_signer_seeds();
 
-        self.init_campaign_collection(name, uri, campaign.is_transferable, &[&collection_seeds] )?;
+        self.init_campaign_collection(name, uri, campaign.is_transferable, &[&collection_seeds])?;
 
         self.deposit_tokens(total_deposit)?;
 

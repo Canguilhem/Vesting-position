@@ -23,6 +23,14 @@ pub struct Campaign {
     pub auth_bump: u8,
 }
 
+#[account]
+#[derive(InitSpace)]
+pub struct ClaimReceipt {
+    pub claimer: Pubkey,
+    pub allocation: u64,
+    pub asset: Pubkey,
+}
+
 impl Campaign {
     pub fn signer_seeds(&self) -> [&[u8]; 3] {
         [

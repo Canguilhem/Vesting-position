@@ -20,14 +20,14 @@ pub enum ErrorCode {
     InvalidCollection,
     #[msg("Unauthorized")]
     Unauthorized,
-    #[msg("Asset must sign")]
-    AssetMustSign,
     #[msg("Proofs are missing")]
     ProofsMissing,
     #[msg("Allocation is missing")]
     AllocationsMissing,
     #[msg("Invalid allocation")]
     InvalidAllocation,
+    #[msg("Already claimed")]
+    AlreadyClaimed,
     #[msg("Invalid proofs")]
     InvalidProofs,
     #[msg("Asset not found")]
