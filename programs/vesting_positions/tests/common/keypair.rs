@@ -20,9 +20,9 @@ pub struct WhitelistUser {
     pub proofs: Vec<[u8; 33]>,
 }
 
-pub fn load_whitelist_user(fixture: &MerkleTree, path: impl AsRef<Path>) -> WhitelistUser {
+pub fn load_whitelist_user(merkle: &MerkleTree, path: impl AsRef<Path>) -> WhitelistUser {
     let keypair = load_keypair(path);
-    let (allocation, proofs) = get_proofs(fixture, &keypair.pubkey()).expect("user in merkle tree");
+    let (allocation, proofs) = get_proofs(merkle, &keypair.pubkey()).expect("user in merkle tree");
     WhitelistUser {
         keypair,
         allocation,

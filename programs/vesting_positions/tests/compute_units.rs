@@ -10,14 +10,14 @@ use solana_sdk::signer::Signer;
 use vesting_positions::{instruction, test_helpers::VestingBundle};
 
 use common::{
-    default_fixture, fund_keypair, load_whitelist_user, log_tx_cu, DEFAULT_TX_CU, LAMPORTS,
+    default_merkle, fund_keypair, load_whitelist_user, log_tx_cu, DEFAULT_TX_CU, LAMPORTS,
     MAX_TX_CU, WHITELISTED_1, setup,
 };
 
 #[test]
 fn compute_units_profile() {
-    let fixture = default_fixture();
-    let alice = load_whitelist_user(&fixture, WHITELISTED_1);
+    let merkle = default_merkle();
+    let alice = load_whitelist_user(&merkle, WHITELISTED_1);
     let proofs = alice.proofs.clone();
     let allocation = alice.allocation;
 
@@ -29,7 +29,7 @@ fn compute_units_profile() {
 
     let creator = ctx.svm.create_funded_account(LAMPORTS).unwrap();
     let mint = ctx.svm.create_token_mint(&creator, 6).unwrap();
-    let base = VestingBundle::init(creator.pubkey(), mint.pubkey(), &fixture.root);
+    let base = VestingBundle::init(creator.pubkey(), mint.pubkey(), &merkle.root);
 
     ctx.svm
         .create_associated_token_account(&base.mint, &creator)
@@ -47,7 +47,7 @@ fn compute_units_profile() {
     let init_ix = ctx.program().build_ix(
         base,
         instruction::Initialize {
-            merkle_root: fixture.root,
+            merkle_root: merkle.root,
             start,
             end,
             cliff_duration: 86_400,

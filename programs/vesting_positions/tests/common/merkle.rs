@@ -20,7 +20,7 @@ struct Entry {
     proofs: Vec<String>,
 }
 
-pub fn default_fixture() -> MerkleTree {
+pub fn default_merkle() -> MerkleTree {
     load_merkle_data(GENERATED_MERKLE)
 }
 
@@ -45,9 +45,9 @@ pub fn load_merkle_data(path: impl AsRef<Path>) -> MerkleTree {
 }
 
 /// Look up `(allocation, proofs)` for a claimer pubkey.
-pub fn get_proofs(fixture: &MerkleTree, claimer: &Pubkey) -> Option<(u64, Vec<[u8; 33]>)> {
+pub fn get_proofs(merkle: &MerkleTree, claimer: &Pubkey) -> Option<(u64, Vec<[u8; 33]>)> {
     let key = claimer.to_string().to_lowercase();
-    let entry = fixture.data.get(&key)?.first()?;
+    let entry = merkle.data.get(&key)?.first()?;
     let allocation = entry.amount.parse().ok()?;
     let proofs = entry.proofs.iter().map(|p| parse_proof_hex(p)).collect();
     Some((allocation, proofs))
