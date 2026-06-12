@@ -58,8 +58,10 @@ pub mod vesting_positions {
         ctx: Context<Claim>,
         proofs: Option<Vec<[u8; 33]>>,
         allocation: Option<u64>,
+        name: String,
+        uri: String,
     ) -> Result<()> {
-        ctx.accounts.claim(proofs, allocation)
+        ctx.accounts.claim(proofs, allocation, name, uri)
     }
 
     pub fn exclude_asset(ctx: Context<ExcludeAsset>) -> Result<()> {

@@ -120,6 +120,8 @@ fn pure_linear_starts_at_cliff_end() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -170,6 +172,8 @@ fn full_release_at_cliff() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("AlreadyFullyClaimed");
@@ -204,6 +208,8 @@ fn claims_at_linear_checkpoints() {
                     instruction::Claim {
                         proofs: None,
                         allocation: None,
+                        name: "Test asset".to_string(),
+                        uri: "https://example.com".to_string(),
                     },
                 )
                 .send_ok();

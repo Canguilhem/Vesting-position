@@ -9,7 +9,10 @@ use mpl_core::{
     types::{PermanentFreezeDelegate, Plugin, PluginAuthority, PluginAuthorityPair},
 };
 
-use crate::{error::ErrorCode, Campaign, InitializeEvent, CAMPAIGN, COLLECTION, UPDATE_AUTH};
+use crate::{
+    build_collection_attributes, error::ErrorCode, Campaign, InitializeEvent, CAMPAIGN, COLLECTION,
+    UPDATE_AUTH,
+};
 
 // What `#[derive(BundledPubkeys)]` buys us (host/test builds only):
 //
@@ -139,14 +142,19 @@ impl<'info> Initialize<'info> {
 
     fn init_campaign_collection(
         &mut self,
+        campaign: &Campaign,
         name: String,
         uri: String,
-        is_transferable: bool,
         seeds: &[&[&[u8]]],
     ) -> Result<()> {
+        let attributes_plugin = PluginAuthorityPair {
+            plugin: Plugin::Attributes(build_collection_attributes(campaign)),
+            authority: Some(PluginAuthority::UpdateAuthority),
+        };
+
         let freeze_plugin = PluginAuthorityPair {
             plugin: Plugin::PermanentFreezeDelegate(PermanentFreezeDelegate {
-                frozen: !is_transferable,
+                frozen: !campaign.is_transferable,
             }),
             authority: Some(PluginAuthority::UpdateAuthority),
         };
@@ -158,7 +166,7 @@ impl<'info> Initialize<'info> {
             .system_program(&self.system_program.to_account_info())
             .name(name)
             .uri(uri)
-            .plugins(vec![freeze_plugin])
+            .plugins(vec![attributes_plugin, freeze_plugin])
             .invoke_signed(seeds)?;
 
         Ok(())
@@ -217,7 +225,7 @@ impl<'info> Initialize<'info> {
 
         let collection_seeds = campaign.collection_signer_seeds();
 
-        self.init_campaign_collection(name, uri, campaign.is_transferable, &[&collection_seeds])?;
+        self.init_campaign_collection(&campaign, name, uri, &[&collection_seeds])?;
 
         self.deposit_tokens(total_deposit)?;
 

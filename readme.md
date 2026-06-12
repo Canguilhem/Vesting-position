@@ -64,20 +64,38 @@ collection:          Pubkey      // mpl-core Collection address
 campaign_bump / collection_bump / auth_bump: u8
 ```
 
+### Collection attributes
+
+Stored on the mpl-core Collection `Attributes` plugin at `initialize` (shared by every position in the campaign):
+
+```
+mint:                 Pubkey     // SPL token being vested
+start:                i64        // vesting window opens
+end:                  i64        // full vest
+cliff_duration:       u64        // seconds after start
+cliff_release_bps:    u16        // basis points released at cliff
+grace_period:         u64        // claim window extension after end
+```
+
+Campaign PDA is **not** stored — derive it from the collection:
+
+```
+campaign = PDA(["campaign", collection], vesting_positions_program_id)
+```
+
 ### Asset attributes
 
-Stored in the mpl-core `Attributes` plugin (string key/value pairs):
+Stored on each position's mpl-core `Attributes` plugin (updated on claim):
 
 ```
 allocation:           u64        // per-recipient amount, from Merkle leaf
 claimed_so_far:       u64        // running total claimed
-last_claim_timestamp: i64        // updated on every claim
-campaign:             Pubkey     // reference to Campaign PDA
 original_recipient:   Pubkey     // wallet that was in the Merkle tree
-mint:                 Pubkey     // token being vested
 ```
 
-Asset name and uri mirror the collection's `name` / `uri` passed at `initialize`.
+**Marketplace read path:** fetch asset attrs + collection attrs → compute remaining / claimable with the vesting formula. Derive the Campaign PDA only when calling program instructions (claim, clawback, etc.).
+
+Position `name` / `uri` are set per claim (instruction args), not copied from the collection.
 
 ---
 

@@ -36,8 +36,7 @@ pub struct InitializeEvent {
     pub timestamp: i64,
 }
 
-/// Emitted by both `freeze_collection` and `freeze_asset`;
-/// `target` is the collection or asset that was toggled.
+/// both `freeze_collection` & `freeze_asset`
 #[event]
 pub struct FreezeEvent {
     pub campaign: Pubkey,

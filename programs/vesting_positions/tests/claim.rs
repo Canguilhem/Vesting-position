@@ -39,7 +39,7 @@ fn scenario_1_alice_first_and_subsequent_claim() {
     let asset = world.asset_for(&alice.keypair.pubkey());
     world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
     world.ctx.svm.assert_account_exists(&asset);
-    assert_receipt_set(&world, &alice.keypair.pubkey(), alice.allocation);
+    assert_receipt_set(&world, &alice.keypair.pubkey());
 
     let sub_bundle = world
         .bundle
@@ -53,6 +53,8 @@ fn scenario_1_alice_first_and_subsequent_claim() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -92,6 +94,8 @@ fn scenario_2_two_users_transfer_and_bob_claims_both() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -109,6 +113,8 @@ fn scenario_2_two_users_transfer_and_bob_claims_both() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -140,6 +146,8 @@ fn scenario_3_buyback_alice_claims_again() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -162,6 +170,8 @@ fn scenario_3_buyback_alice_claims_again() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -184,6 +194,8 @@ fn scenario_3_buyback_alice_claims_again() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -212,6 +224,8 @@ fn scenario_4_replay_first_claim_fails() {
             instruction::Claim {
                 proofs: Some(alice.proofs),
                 allocation: Some(alice.allocation),
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("AlreadyClaimed");
@@ -235,6 +249,8 @@ fn scenario_5_unwhitelisted_user_fails() {
             instruction::Claim {
                 proofs: Some(random_proofs()),
                 allocation: Some(MOCK_ALLOC),
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("InvalidProofs");
@@ -266,6 +282,8 @@ fn scenario_6_not_owner_subsequent_claim_fails() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("NotAssetOwner");
@@ -299,6 +317,8 @@ fn scenario_7_fully_claimed_position_frozen() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -325,6 +345,8 @@ fn scenario_7_fully_claimed_position_frozen() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("AlreadyFullyClaimed");
@@ -354,6 +376,8 @@ fn scenario_8_wrong_asset_subsequent_claim_fails() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("InvalidAsset");
@@ -376,6 +400,8 @@ fn scenario_10_claim_before_start_fails() {
             instruction::Claim {
                 proofs: Some(alice.proofs.clone()),
                 allocation: Some(alice.allocation),
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("CampaignNotStarted");
@@ -407,6 +433,8 @@ fn scenario_9_claim_window_closes_after_grace() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -428,37 +456,10 @@ fn scenario_9_claim_window_closes_after_grace() {
             instruction::Claim {
                 proofs: Some(bob.proofs.clone()),
                 allocation: Some(bob.allocation),
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("ClaimWindowClosed");
     world.after_tx();
-}
-
-/// Scenario 11: Minted positions inherit the collection's name and uri
-/// (set at initialize) instead of hardcoded placeholders.
-#[test]
-fn scenario_11_position_metadata_mirrors_collection() {
-    use mpl_core::accounts::{BaseAssetV1, BaseCollectionV1};
-
-    let (merkle, mut world) = setup(None);
-    let alice = load_whitelist_user(&merkle, WHITELISTED_1);
-    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
-
-    let asset = world.asset_for(&alice.keypair.pubkey());
-    world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
-
-    let collection_account = world
-        .ctx
-        .svm
-        .get_account(&world.bundle.collection)
-        .expect("collection account");
-    let collection =
-        BaseCollectionV1::from_bytes(&collection_account.data).expect("collection data");
-
-    let asset_account = world.ctx.svm.get_account(&asset).expect("asset account");
-    let asset_data = BaseAssetV1::from_bytes(&asset_account.data).expect("asset data");
-
-    assert_eq!(asset_data.name, collection.name);
-    assert_eq!(asset_data.uri, collection.uri);
-    assert_eq!(asset_data.name, "Vesting campaign");
 }

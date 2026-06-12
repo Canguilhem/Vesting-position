@@ -20,7 +20,11 @@ fn mint_alice_position(
 }
 
 /// Claim at ~50% of the linear window so the position is partially vested.
-fn partial_claim(world: &mut TestCampaign, user: &WhitelistUser, asset: anchor_lang::prelude::Pubkey) {
+fn partial_claim(
+    world: &mut TestCampaign,
+    user: &WhitelistUser,
+    asset: anchor_lang::prelude::Pubkey,
+) {
     world.warp_to(world.linear_checkpoint(50));
     let sub = world
         .bundle
@@ -34,12 +38,13 @@ fn partial_claim(world: &mut TestCampaign, user: &WhitelistUser, asset: anchor_l
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
     world.after_tx();
 }
-
 
 // clawback existing position
 /// Burns the asset and returns the unclaimed remainder to the creator.
@@ -63,7 +68,10 @@ fn clawback_after_grace_burns_asset_and_recovers_remainder() {
         .send_ok();
     world.after_tx();
 
-    assert!(!world.asset_is_valid_mpl_core(&asset), "asset must be burned");
+    assert!(
+        !world.asset_is_valid_mpl_core(&asset),
+        "asset must be burned"
+    );
     assert_eq!(
         world.creator_token_balance(),
         creator_before + (alice.allocation - claimed)
@@ -82,6 +90,8 @@ fn clawback_after_grace_burns_asset_and_recovers_remainder() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("ClaimWindowClosed");
@@ -125,6 +135,8 @@ fn clawback_fully_claimed_badge_fails() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -202,6 +214,8 @@ fn clawback_unclaimed_recovers_allocation_and_blocks_claim() {
             instruction::Claim {
                 proofs: Some(bob.proofs.clone()),
                 allocation: Some(bob.allocation),
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("ClaimWindowClosed");
@@ -289,6 +303,8 @@ fn clawback_unclaimed_succeeds_despite_buyers_zeroed_receipt() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -391,6 +407,8 @@ fn close_campaign_succeeds_when_vault_empty() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -413,7 +431,11 @@ fn close_campaign_succeeds_when_vault_empty() {
         "campaign PDA must be closed"
     );
     assert!(
-        world.ctx.svm.get_account(&world.bundle.campaign_ata).is_none()
+        world
+            .ctx
+            .svm
+            .get_account(&world.bundle.campaign_ata)
+            .is_none()
             || world.lamports(&world.bundle.campaign_ata) == 0,
         "campaign ATA must be closed"
     );
@@ -562,6 +584,8 @@ fn close_receipt_returns_rent_after_close_campaign() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();

@@ -27,8 +27,8 @@ pub struct Campaign {
 #[derive(InitSpace)]
 pub struct ClaimReceipt {
     pub claimer: Pubkey,
-    pub allocation: u64,
-    pub asset: Pubkey,
+    // pub allocation: u64,
+    // pub asset: Pubkey,
 }
 
 impl Campaign {

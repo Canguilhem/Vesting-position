@@ -1,7 +1,11 @@
 mod common;
 
 use anchor_litesvm::{AssertionHelpers, TestHelpers};
-use vesting_positions::Campaign;
+use vesting_positions::{
+    Campaign, COL_ATTR_CLIFF_DURATION, COL_ATTR_CLIFF_RELEASE_BPS, COL_ATTR_END,
+    COL_ATTR_GRACE_PERIOD, COL_ATTR_MINT, COL_ATTR_START, get_attr_i64, get_attr_pubkey,
+    get_attr_u64,
+};
 
 use common::{default_merkle, CampaignConfig, TestCampaign};
 
@@ -54,6 +58,31 @@ fn initialize_campaign_deposits_tokens_and_creates_collection() {
         .ctx
         .svm
         .assert_account_exists(&world.bundle.collection);
+
+    let col = world.fetch_collection_attributes();
+    let campaign = world.campaign();
+    assert_eq!(
+        get_attr_pubkey(&col, COL_ATTR_MINT).unwrap(),
+        world.bundle.mint
+    );
+    assert_eq!(
+        get_attr_pubkey(&col, COL_ATTR_MINT).unwrap(),
+        campaign.mint_to_distribute
+    );
+    assert_eq!(get_attr_i64(&col, COL_ATTR_START).unwrap(), campaign.start);
+    assert_eq!(get_attr_i64(&col, COL_ATTR_END).unwrap(), campaign.end);
+    assert_eq!(
+        get_attr_u64(&col, COL_ATTR_CLIFF_DURATION).unwrap(),
+        campaign.cliff_duration
+    );
+    assert_eq!(
+        get_attr_u64(&col, COL_ATTR_CLIFF_RELEASE_BPS).unwrap(),
+        campaign.cliff_release_bps as u64
+    );
+    assert_eq!(
+        get_attr_u64(&col, COL_ATTR_GRACE_PERIOD).unwrap(),
+        campaign.grace_period
+    );
 }
 
 #[test]

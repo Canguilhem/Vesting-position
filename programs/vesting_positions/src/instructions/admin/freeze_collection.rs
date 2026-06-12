@@ -41,9 +41,6 @@ pub struct FreezeCollection<'info> {
     )]
     pub update_authority: UncheckedAccount<'info>,
 
-    // /// CHECK: mpl-core asset validated in toggle_freeze
-    // #[account(mut)]
-    // pub asset: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 
     /// CHECK: mpl-core program id

@@ -85,7 +85,10 @@ mod tests {
         assert_eq!(halfway, allocation / 2);
 
         // Fully vested at end.
-        assert_eq!(compute_claimable(&c, window, allocation, 0).unwrap(), allocation);
+        assert_eq!(
+            compute_claimable(&c, window, allocation, 0).unwrap(),
+            allocation
+        );
     }
 
     /// `allocation * bps` would overflow u64 for allocations above ~1.8e15.

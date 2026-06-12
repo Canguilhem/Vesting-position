@@ -161,6 +161,34 @@ impl TestCampaign {
             .unwrap_or(0)
     }
 
+    pub fn fetch_collection_attributes(&self) -> mpl_core::types::Attributes {
+        let account = self
+            .ctx
+            .svm
+            .get_account(&self.bundle.collection)
+            .expect("collection account");
+        let mut lamports = account.lamports;
+        let mut data = account.data;
+        let owner = account.owner;
+        let collection = &self.bundle.collection;
+        let account_info = AccountInfo::new(
+            collection,
+            false,
+            false,
+            &mut lamports,
+            &mut data,
+            &owner,
+            false,
+            0,
+        );
+        let (_, attrs, _) = fetch_plugin::<BaseCollectionV1, mpl_core::types::Attributes>(
+            &account_info,
+            PluginType::Attributes,
+        )
+        .expect("collection Attributes plugin");
+        attrs
+    }
+
     pub fn asset_has_freeze_delegate(&self, asset: &Pubkey) -> bool {
         self.try_fetch_asset_freeze_delegate(asset).is_some()
     }
@@ -253,6 +281,8 @@ impl TestCampaign {
             instruction::Claim {
                 proofs: Some(proofs),
                 allocation: Some(allocation),
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         );
         self.ctx
@@ -373,10 +403,8 @@ pub fn transfer_changes_owner(
     world.asset_owner(asset) != owner_before
 }
 
-pub fn assert_receipt_set(world: &TestCampaign, user: &Pubkey, allocation: u64) {
+pub fn assert_receipt_set(world: &TestCampaign, user: &Pubkey) {
     let bundle = world.bundle.for_claimer(*user);
     let receipt: ClaimReceipt = world.ctx.get_account(&bundle.claim_receipt).unwrap();
     assert_eq!(receipt.claimer, *user);
-    assert_eq!(receipt.allocation, allocation);
-    assert_eq!(receipt.asset, bundle.asset);
 }

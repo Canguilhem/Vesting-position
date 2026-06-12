@@ -190,6 +190,8 @@ fn fully_claimed_loyalty_badge_is_permanently_frozen() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -237,6 +239,8 @@ fn fully_claimed_non_transferable_has_no_asset_freeze() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -279,6 +283,8 @@ fn exclude_asset_blocks_subsequent_claims() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -316,6 +322,8 @@ fn exclude_asset_blocks_subsequent_claims() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_err_named("InvalidAsset");
@@ -347,6 +355,8 @@ fn exclude_asset_fails_when_fully_claimed() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -542,6 +552,8 @@ fn final_claim_succeeds_after_collection_unfreeze_toggle() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();
@@ -588,6 +600,8 @@ fn final_claim_freezes_badge_even_when_collection_frozen() {
             instruction::Claim {
                 proofs: None,
                 allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
             },
         )
         .send_ok();

@@ -10,7 +10,7 @@ use mpl_core::{
 use super::clawback::transfer_to_creator;
 use crate::{error::ErrorCode, Campaign, CancelEvent, CAMPAIGN, UPDATE_AUTH};
 
-/// Safeguard for a campaign created by mistake: 
+/// Safeguard for a campaign created by mistake:
 /// only callable while no position has ever been minted
 #[cfg_attr(
     not(target_os = "solana"),

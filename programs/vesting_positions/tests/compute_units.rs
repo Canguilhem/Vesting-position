@@ -72,6 +72,8 @@ fn compute_units_profile() {
         instruction::Claim {
             proofs: Some(proofs),
             allocation: Some(allocation),
+            name: "Test asset".to_string(),
+            uri: "https://example.com".to_string(),
         },
     );
     let budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(MAX_TX_CU);
@@ -88,6 +90,8 @@ fn compute_units_profile() {
         instruction::Claim {
             proofs: None,
             allocation: None,
+            name: "Test asset".to_string(),
+            uri: "https://example.com".to_string(),
         },
     );
     match ctx.execute_instructions(vec![sub_ix], &[&alice.keypair]) {
@@ -109,6 +113,8 @@ fn compute_units_profile() {
         instruction::Claim {
             proofs: None,
             allocation: None,
+            name: "Test asset".to_string(),
+            uri: "https://example.com".to_string(),
         },
     );
     let budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(MAX_TX_CU);

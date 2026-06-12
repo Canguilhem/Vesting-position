@@ -8,7 +8,8 @@ use mpl_core::{accounts::BaseAssetV1, instructions::BurnV1CpiBuilder, programs::
 use crate::{
     constants::{ATTR_ALLOCATION, ATTR_CLAIMED, ATTR_ORIGINAL_RECIPIENT},
     error::ErrorCode,
-    get_attr_pubkey, get_attr_u64, leaf_hash, load_attributes, require_asset_in_collection,
+    get_attr_pubkey, get_attr_u64, leaf_hash, load_attributes, load_collection_attributes,
+    require_asset_in_collection, require_collection_matches_campaign,
     require_vesting_position_attributes, verify, Campaign, ClaimReceipt, ClawbackEvent, ASSET,
     CAMPAIGN, CLAIM, UPDATE_AUTH,
 };
@@ -212,8 +213,6 @@ impl<'info> ClawbackUnclaimed<'info> {
         // Block any future first claim by this recipient.
         self.claim_receipt.set_inner(ClaimReceipt {
             claimer: original_recipient,
-            allocation,
-            asset: Pubkey::default(),
         });
 
         transfer_to_creator(
@@ -272,8 +271,12 @@ pub(crate) fn burn_position_and_recover(accounts: BurnPositionAccounts) -> Resul
     } = accounts;
 
     require_asset_in_collection(asset, &campaign.collection)?;
+    let col_attrs = load_collection_attributes(&collection.to_account_info())?
+        .ok_or(ErrorCode::AttributesNotFound)?;
+    require_collection_matches_campaign(&campaign.collection, &col_attrs, campaign)?;
+
     let attrs = load_attributes(&asset.to_account_info())?.ok_or(ErrorCode::AttributesNotFound)?;
-    require_vesting_position_attributes(&attrs, &campaign.key(), campaign)?;
+    require_vesting_position_attributes(&attrs)?;
 
     let claimed = get_attr_u64(&attrs, ATTR_CLAIMED)?;
     let allocation = get_attr_u64(&attrs, ATTR_ALLOCATION)?;
