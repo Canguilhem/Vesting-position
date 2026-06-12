@@ -16,7 +16,7 @@ pub const CLAIM: &[u8] = b"claim";
 pub const ASSET: &[u8] = b"asset";
 
 /// TODO: would it be better to have less attributes but with the same data encoded
-/// ie: something like 
+/// ie: something like
 ///     schedule -> (start, end, grace)
 ///     cliff -> (duration, bps)
 

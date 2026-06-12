@@ -2,9 +2,8 @@ mod common;
 
 use anchor_litesvm::{AssertionHelpers, TestHelpers};
 use vesting_positions::{
-    Campaign, COL_ATTR_CLIFF_DURATION, COL_ATTR_CLIFF_RELEASE_BPS, COL_ATTR_END,
-    COL_ATTR_GRACE_PERIOD, COL_ATTR_MINT, COL_ATTR_START, get_attr_i64, get_attr_pubkey,
-    get_attr_u64,
+    get_attr_i64, get_attr_pubkey, get_attr_u64, Campaign, COL_ATTR_CLIFF_DURATION,
+    COL_ATTR_CLIFF_RELEASE_BPS, COL_ATTR_END, COL_ATTR_GRACE_PERIOD, COL_ATTR_MINT, COL_ATTR_START,
 };
 
 use common::{default_merkle, CampaignConfig, TestCampaign};

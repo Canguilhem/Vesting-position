@@ -10,13 +10,15 @@
 
 mod common;
 
-use anchor_litesvm::{AssertionHelpers, Signer};
-use vesting_positions::{instruction, leaf_hash, verify};
+use anchor_litesvm::{AssertionHelpers, Report, Signer, md_kv, md_table};
+use vesting_positions::{instruction, leaf_hash, verify, Campaign};
 
 use common::{
     assert_receipt_set, fund_keypair, load_keypair, load_whitelist_user, random_proofs, setup,
     LAMPORTS, MOCK_ALLOC, NOT_WHITELISTED, WHITELISTED_1, WHITELISTED_2,
 };
+
+use crate::common::{CampaignConfig, TOTAL_DEPOSIT};
 
 // ---------------------------------------------------------------------------
 // Happy path
@@ -462,4 +464,258 @@ fn scenario_9_claim_window_closes_after_grace() {
         )
         .send_err_named("ClaimWindowClosed");
     world.after_tx();
+}
+
+#[test]
+fn full_lifecycle() {
+
+    let mut md = Report::new(
+        "Full vesting lifecycle",
+        "demonstrate whole vesting life cycle include position transfers",
+    );
+
+    let (merkle, mut world) = setup(None);
+    let alice = load_whitelist_user(&merkle, WHITELISTED_1);
+    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
+    let bob = load_keypair(NOT_WHITELISTED);
+    fund_keypair(&mut world.ctx, &bob, LAMPORTS);
+
+    world.ctx.alias(alice.keypair.pubkey(), "Alice");
+    world.ctx.alias(bob.pubkey(), "Bob");
+    world.ctx.alias(world.bundle.creator, "campaign creator");
+
+    md.block(
+        "actors pubkeys",
+        md_kv! {
+            "campaign creator"       => world.bundle.creator,
+            "alice"       => alice.keypair.pubkey(),
+            "bob"       => bob.pubkey(),
+        },
+    );
+
+    let campaign: Campaign = world.campaign();
+    let config = CampaignConfig::default();
+
+    md.step("Campaign initialized");
+    md.block(
+        "initialization checks",
+        md_kv! {
+            "creator match"       => campaign.creator == world.bundle.creator,
+            "schedule match"      => campaign.start == config.start
+                && campaign.end == config.end
+                && campaign.cliff_duration == config.cliff_duration
+                && campaign.cliff_release_bps == config.cliff_release_bps
+                && campaign.grace_period == config.grace_period,
+            "merkle root match"   => campaign.merkle_root == merkle.root,
+            "total deposit match" => campaign.total_deposit == TOTAL_DEPOSIT,
+        },
+    );
+    md.check(
+        "campaign creator match",
+        campaign.creator == world.bundle.creator,
+        true,
+    );
+    md.check(
+        "campaign schedule match",
+        campaign.start == config.start
+            && campaign.end == config.end
+            && campaign.cliff_duration == config.cliff_duration
+            && campaign.cliff_release_bps == config.cliff_release_bps
+            && campaign.grace_period == config.grace_period,
+        true,
+    );
+    md.check(
+        "merkle root and deposit match",
+        campaign.merkle_root == merkle.root && campaign.total_deposit == TOTAL_DEPOSIT,
+        true,
+    );
+    md.block("campaign settings", md_kv! {
+        "creator"              => world.ctx.label(&campaign.creator),
+        "start (unix)"         => campaign.start,
+        "end (unix)"           => campaign.end,
+        "grace period (sec)"   => campaign.grace_period,
+        "cliff duration (sec)" => campaign.cliff_duration,
+        "cliff release (bps)"  => campaign.cliff_release_bps,
+        "total deposit"        => campaign.total_deposit,
+        "transferable"         => campaign.is_transferable,
+    });
+    md.block("campaign schedule", md_table! {
+        "field", "value";
+        "start", campaign.start;
+        "end",   campaign.end;
+        "grace", campaign.grace_period;
+    });
+
+    md.step("Alice first claim");
+    world.warp_to(world.cliff_end());
+    let asset = world.asset_for(&alice.keypair.pubkey());
+    world.ctx.alias(asset, "Position NFT (minted by Alice)");
+    world.ctx.alias(campaign.collection, "NFT Collection for this campaign");
+
+    md.block("Collection & Asset", md_kv! {
+        world.ctx.label(&asset) => asset,
+        world.ctx.label(&campaign.collection) => campaign.collection
+    });
+
+    let cliff_amount = world.expected_claimable(world.cliff_end(), alice.allocation, 0);
+    md.block("first claim", md_kv! {
+        "claimant"         => world.ctx.label(&alice.keypair.pubkey()),
+        "whitelisted"      => true,
+        "auth"             => "merkle proofs + allocation",
+        "timestamp (unix)" => world.cliff_end(),
+        "allocation"       => alice.allocation,
+        "expected release" => cliff_amount,
+    });
+    world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
+    md.check("position nft exists", true, world.ctx.account_exists(&asset));
+    md.check(
+        "position nft owner is alice",
+        alice.keypair.pubkey(),
+        world.asset_owner(&asset),
+    );
+    assert_receipt_set(&world, &alice.keypair.pubkey());
+    md.check(
+        format!("cliff release credited ({}%)", campaign.cliff_release_bps / 100),
+        cliff_amount,
+        world.claimer_token_balance(&alice.keypair.pubkey()),
+    );
+
+    md.step("Alice subsequent claim");
+    let mid = world.linear_checkpoint(50);
+    world.warp_to(mid);
+    let balance_before = world.claimer_token_balance(&alice.keypair.pubkey());
+    let expected_mid = world.expected_claimable(mid, alice.allocation, balance_before);
+    md.block("subsequent claim", md_kv! {
+        "claimant"           => world.ctx.label(&alice.keypair.pubkey()),
+        "auth"               => "position NFT (no proofs)",
+        "asset" => world.ctx.label(&asset),
+        "linear %"           => 50,
+        "timestamp (unix)"   => mid,
+        "balance before"     => balance_before,
+        "incremental release"=> expected_mid,
+    });
+    let sub_bundle = world
+        .bundle
+        .for_claimer(alice.keypair.pubkey())
+        .with_asset(asset);
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            sub_bundle,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
+            },
+        )
+        .send_ok();
+    world.after_tx();
+    md.check(
+        "additional vesting credited",
+        balance_before + expected_mid,
+        world.claimer_token_balance(&alice.keypair.pubkey()),
+    );
+
+    md.step("NFT transfer to Bob");
+    md.block("transfer", md_kv! {
+        "from"          => world.ctx.label(&alice.keypair.pubkey()),
+        "to"            => world.ctx.label(&bob.pubkey()),
+        "recipient whitelisted" => false,
+        "asset"         => world.ctx.label(&asset),
+    });
+    let transfer_ix =
+        world.transfer_asset_ix(&alice.keypair.pubkey(), &bob.pubkey(), &asset);
+    world.ctx.tx(&[&alice.keypair]).ix(transfer_ix).send_ok();
+    world.after_tx();
+    md.check(
+        "position nft owner is bob",
+        bob.pubkey(),
+        world.asset_owner(&asset),
+    );
+
+    md.step("Merkle replay rejected");
+    md.block("attack", md_kv! {
+        "vector"         => "first claim with valid merkle proofs after transfer",
+        "goal"           => "mint a second NFT / reclaim allocation (infinite money trick)",
+        "alice owns nft" => false,
+        "expected error" => "AlreadyClaimed",
+    });
+    md.check(
+        "alice no longer owns the nft",
+        alice.keypair.pubkey() != world.asset_owner(&asset),
+        true,
+    );
+    let merkle_replay = world.bundle.for_claimer(alice.keypair.pubkey());
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            merkle_replay,
+            instruction::Claim {
+                proofs: Some(alice.proofs.clone()),
+                allocation: Some(alice.allocation),
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
+            },
+        )
+        .send_err_named("AlreadyClaimed");
+    world.after_tx();
+    md.check(
+        "claim receipt still bound to alice",
+        alice.keypair.pubkey(),
+        world
+            .ctx
+            .get_account::<vesting_positions::ClaimReceipt>(
+                &world.bundle.for_claimer(alice.keypair.pubkey()).claim_receipt,
+            )
+            .unwrap()
+            .claimer,
+    );
+
+    md.step("Bob claims via NFT ownership");
+    let alice_claimed = world.claimer_token_balance(&alice.keypair.pubkey());
+    let later = world.linear_checkpoint(75);
+    world.warp_to(later);
+    let bob_expected = world.expected_claimable(later, alice.allocation, alice_claimed);
+    
+    md.block("subsequent claim", md_kv! {
+        "claimant"           => world.ctx.label(&bob.pubkey()),
+        "whitelisted"        => false,
+        "asset" =>  asset,
+        "auth"               => "NFT ownership only (no merkle proofs)",
+        "linear %"           => 75,
+        "timestamp (unix)"   => later,
+        "claimed so far"     => alice_claimed,
+        "expected release"   => bob_expected,
+    });
+    let bob_claim = world
+        .bundle
+        .for_claimer(bob.pubkey())
+        .with_asset(asset);
+    world
+        .ctx
+        .tx(&[&bob])
+        .build(
+            bob_claim,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+                name: "Test asset".to_string(),
+                uri: "https://example.com".to_string(),
+            },
+        )
+        .send_ok();
+    world.after_tx();
+    md.check(
+        "bob credited without merkle proofs",
+        bob_expected,
+        world.claimer_token_balance(&bob.pubkey()),
+    );
+    md.check(
+        "position nft owner is still bob",
+        bob.pubkey(),
+        world.asset_owner(&asset),
+    );
 }

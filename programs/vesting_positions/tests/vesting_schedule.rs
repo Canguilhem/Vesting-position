@@ -1,6 +1,6 @@
 mod common;
 
-use anchor_litesvm::{AssertionHelpers, Signer};
+use anchor_litesvm::{AssertionHelpers, MarkdownBlock, Report, Signer};
 use vesting_positions::instruction;
 
 use common::{fund_keypair, load_whitelist_user, setup, CampaignConfig, LAMPORTS, WHITELISTED_1};
@@ -185,13 +185,23 @@ fn full_release_at_cliff() {
 fn claims_at_linear_checkpoints() {
     let (merkle, mut world) = setup(None);
     let alice = load_whitelist_user(&merkle, WHITELISTED_1);
+    let mut md = Report::new(
+        "Linear checkpoint vesting",
+        "incremental claims at each point through the linear window; \
+         10% cliff at cliff_end, remainder vests linearly to end",
+    );
 
     fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
+    world.ctx.alias(alice.keypair.pubkey(), "Alice");
     let asset = world.asset_for(&alice.keypair.pubkey());
+
+    md.step("claim at each linear checkpoint");
+    let mut table_rows: Vec<Vec<String>> = Vec::new();
 
     for (i, &pct) in LINEAR_CHECKPOINTS.iter().enumerate() {
         let now = world.linear_checkpoint(pct);
         world.warp_to(now);
+        let balance_before = world.claimer_token_balance(&alice.keypair.pubkey());
 
         if i == 0 {
             world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
@@ -216,15 +226,39 @@ fn claims_at_linear_checkpoints() {
             world.after_tx();
         }
 
-        assert_eq!(
-            world.claimer_token_balance(&alice.keypair.pubkey()),
-            world.expected_claimable(now, alice.allocation, 0),
-            "balance mismatch at {pct}% through linear window"
+        let cumulative = world.claimer_token_balance(&alice.keypair.pubkey());
+        let incremental = cumulative - balance_before;
+        let expected = world.expected_claimable(now, alice.allocation, 0);
+        md.check(
+            format!("cumulative at {pct}% linear"),
+            expected,
+            cumulative,
         );
+        table_rows.push(vec![
+            pct.to_string(),
+            now.to_string(),
+            incremental.to_string(),
+            cumulative.to_string(),
+            expected.to_string(),
+        ]);
     }
 
-    assert_eq!(
+    md.block(
+        "vested / released at linear checkpoints",
+        MarkdownBlock::Table {
+            headers: vec![
+                "linear %".into(),
+                "timestamp (unix)".into(),
+                "incremental release".into(),
+                "cumulative released".into(),
+                "expected cumulative".into(),
+            ],
+            rows: table_rows,
+        },
+    );
+    md.check(
+        "full allocation released at end",
+        alice.allocation,
         world.claimer_token_balance(&alice.keypair.pubkey()),
-        alice.allocation
     );
 }

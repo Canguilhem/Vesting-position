@@ -150,7 +150,11 @@ pub fn require_collection_matches_campaign(
     attrs: &Attributes,
     campaign: &Campaign,
 ) -> Result<()> {
-    require_keys_eq!(campaign.collection, *collection, ErrorCode::InvalidCollection);
+    require_keys_eq!(
+        campaign.collection,
+        *collection,
+        ErrorCode::InvalidCollection
+    );
     require_keys_eq!(
         get_attr_pubkey(attrs, COL_ATTR_MINT)?,
         campaign.mint_to_distribute,
