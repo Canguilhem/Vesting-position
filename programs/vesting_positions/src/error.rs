@@ -46,4 +46,18 @@ pub enum ErrorCode {
     AlreadyFullyClaimed,
     #[msg("Insufficient vault balance")]
     InsufficientVaultBalance,
+    #[msg("Grace period not over")]
+    GracePeriodNotOver,
+    #[msg("Vault is not empty")]
+    VaultNotEmpty,
+    #[msg("Campaign already minted positions")]
+    CampaignHasPositions,
+    #[msg("Claim window closed")]
+    ClaimWindowClosed,
+    #[msg("Campaign has not started yet")]
+    CampaignNotStarted,
+    #[msg("Asset has no permanent freeze delegate")]
+    FreezePluginMissing,
+    #[msg("Campaign is still active")]
+    CampaignStillActive,
 }

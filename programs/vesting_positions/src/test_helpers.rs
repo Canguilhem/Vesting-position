@@ -124,4 +124,17 @@ impl VestingBundle {
     pub fn with_asset(self, asset: Pubkey) -> Self {
         Self { asset, ..self }
     }
+
+    /// Swap in a different creator (for unauthorized-signer tests).
+    pub fn with_creator(self, creator: Pubkey) -> Self {
+        Self {
+            creator,
+            creator_ata: ata(&creator, &self.mint),
+            ..self
+        }
+    }
+}
+
+impl anchor_litesvm::Resolvable for VestingBundle {
+    fn resolve_all(&mut self, _ctx: &anchor_litesvm::AnchorContext) {}
 }

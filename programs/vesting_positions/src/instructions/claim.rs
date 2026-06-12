@@ -1,6 +1,6 @@
 use crate::{
-    build_position_attributes, compute_claimable, error::ErrorCode, leaf_hash, verify, Campaign,
-    ClaimEvent, ClaimReceipt, Position, ASSET, CAMPAIGN, CLAIM, UPDATE_AUTH,
+    build_position_attributes, compute_claimable, error::ErrorCode, leaf_hash, load_attributes,
+    verify, Campaign, ClaimEvent, ClaimReceipt, Position, ASSET, CAMPAIGN, CLAIM, UPDATE_AUTH,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::{
@@ -8,12 +8,12 @@ use anchor_spl::{
     token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 use mpl_core::{
-    accounts::BaseAssetV1,
+    accounts::{BaseAssetV1, BaseCollectionV1},
     fetch_plugin,
     instructions::{CreateV2CpiBuilder, UpdatePluginV1CpiBuilder},
     programs::MPL_CORE_ID,
     types::{
-        Attributes, Key as MplKey, PermanentFreezeDelegate, Plugin, PluginAuthority,
+        Key as MplKey, PermanentBurnDelegate, PermanentFreezeDelegate, Plugin, PluginAuthority,
         PluginAuthorityPair, PluginType, UpdateAuthority,
     },
 };
@@ -43,7 +43,6 @@ pub struct Claim<'info> {
     pub update_authority: UncheckedAccount<'info>,
 
     #[account(
-        mut,
         constraint= mint.key()== campaign.mint_to_distribute @ ErrorCode::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
@@ -66,7 +65,6 @@ pub struct Claim<'info> {
     pub user_ata: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
-        mut,
         seeds = [CAMPAIGN, collection.key().as_ref()],
         bump = campaign.campaign_bump,
     )]
@@ -99,9 +97,22 @@ pub struct Claim<'info> {
     pub mpl_core_program: UncheckedAccount<'info>,
 }
 
+// Claim window [start, end + grace_period)
 impl<'info> Claim<'info> {
     pub fn claim(&mut self, proofs: Option<Vec<[u8; 33]>>, allocation: Option<u64>) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
+
+        require!(
+            now >= self.campaign.start,
+            ErrorCode::CampaignNotStarted
+        );
+        let window_end = self
+            .campaign
+            .end
+            .checked_add(self.campaign.grace_period as i64)
+            .ok_or(ErrorCode::MathError)?;
+        require!(now < window_end, ErrorCode::ClaimWindowClosed);
+
         let is_first =
             self.claim_receipt.claimer == Pubkey::default() && self.asset.data_is_empty();
 
@@ -126,7 +137,7 @@ impl<'info> Claim<'info> {
             self.transfer_tokens(claimable)?;
         }
 
-        if new_claimed >= state.allocation {
+        if new_claimed >= state.allocation && self.asset_has_freeze_plugin() {
             self.freeze_asset()?;
         }
 
@@ -158,7 +169,7 @@ impl<'info> Claim<'info> {
 
             self.claim_receipt.set_inner(ClaimReceipt {
                 claimer: self.user.key(),
-                allocation: allocation,
+                allocation,
                 asset: self.asset.key(),
             });
         } else {
@@ -172,9 +183,7 @@ impl<'info> Claim<'info> {
             let allocation = allocation.ok_or(ErrorCode::AllocationsMissing)?;
             Ok(Position::new(allocation, self.user.key()))
         } else {
-            let attrs = self
-                .load_attributes()?
-                .ok_or(ErrorCode::AttributesNotFound)?;
+            let attrs = load_attributes(&self.asset)?.ok_or(ErrorCode::AttributesNotFound)?;
             Position::from_attributes(&attrs)
         }
     }
@@ -210,11 +219,7 @@ impl<'info> Claim<'info> {
         let campaign_key = self.campaign.key();
         let user_key = self.user.key();
         let (_, asset_bump) = Pubkey::find_program_address(
-            &[
-                ASSET,
-                campaign_key.as_ref(),
-                user_key.as_ref(),
-            ],
+            &[ASSET, campaign_key.as_ref(), user_key.as_ref()],
             &crate::ID,
         );
         let asset_bump_bytes = [asset_bump];
@@ -226,23 +231,38 @@ impl<'info> Claim<'info> {
         ];
         let mint = self.campaign.mint_to_distribute;
 
-        let plugins = vec![
-            PluginAuthorityPair {
-                plugin: Plugin::Attributes(build_position_attributes(
-                    allocation,
-                    claimed_so_far,
-                    now,
-                    &campaign_key,
-                    &original_recipient,
-                    &mint,
-                )),
-                authority: Some(PluginAuthority::UpdateAuthority),
-            },
-            PluginAuthorityPair {
+        let mut plugins = vec![PluginAuthorityPair {
+            plugin: Plugin::Attributes(build_position_attributes(
+                allocation,
+                claimed_so_far,
+                now,
+                &campaign_key,
+                &original_recipient,
+                &mint,
+            )),
+            authority: Some(PluginAuthority::UpdateAuthority),
+        }];
+
+        if self.campaign.is_transferable {
+            plugins.push(PluginAuthorityPair {
                 plugin: Plugin::PermanentFreezeDelegate(PermanentFreezeDelegate { frozen: false }),
                 authority: Some(PluginAuthority::UpdateAuthority),
-            },
-        ];
+            });
+        }
+
+        plugins.push(PluginAuthorityPair {
+            plugin: Plugin::PermanentBurnDelegate(PermanentBurnDelegate {}),
+            authority: Some(PluginAuthority::UpdateAuthority),
+        });
+
+        // Position metadata mirrors the collection set at initialize.
+        // Scoped so the data borrow is released before the CPI below.
+        let (name, uri) = {
+            let data = self.collection.try_borrow_data()?;
+            let collection = BaseCollectionV1::from_bytes(&data)
+                .map_err(|_| ErrorCode::InvalidCollection)?;
+            (collection.name, collection.uri)
+        };
 
         CreateV2CpiBuilder::new(&self.mpl_core_program.to_account_info())
             .asset(&self.asset.to_account_info())
@@ -252,8 +272,8 @@ impl<'info> Claim<'info> {
             .owner(Some(&self.user.to_account_info()))
             .update_authority(None)
             .system_program(&self.system_program.to_account_info())
-            .name("Vesting position".to_string())
-            .uri("https://example.com/".to_string())
+            .name(name)
+            .uri(uri)
             .plugins(plugins)
             .invoke_signed(&[&asset_seeds, &auth_seeds])?;
 
@@ -307,15 +327,6 @@ impl<'info> Claim<'info> {
         Ok(())
     }
 
-    fn load_attributes(&self) -> Result<Option<Attributes>> {
-        Ok(fetch_plugin::<BaseAssetV1, Attributes>(
-            &self.asset.to_account_info(),
-            PluginType::Attributes,
-        )
-        .ok()
-        .map(|(_, attrs, _)| attrs))
-    }
-
     fn transfer_tokens(&self, amount: u64) -> Result<()> {
         require!(
             self.campaign_ata.amount >= amount,
@@ -367,6 +378,14 @@ impl<'info> Claim<'info> {
             )))
             .invoke_signed(&[&auth_seeds])?;
         Ok(())
+    }
+
+    fn asset_has_freeze_plugin(&self) -> bool {
+        fetch_plugin::<BaseAssetV1, PermanentFreezeDelegate>(
+            &self.asset.to_account_info(),
+            PluginType::PermanentFreezeDelegate,
+        )
+        .is_ok()
     }
 
     fn freeze_asset(&mut self) -> Result<()> {

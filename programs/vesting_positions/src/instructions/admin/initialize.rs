@@ -9,7 +9,7 @@ use mpl_core::{
     types::{PermanentFreezeDelegate, Plugin, PluginAuthority, PluginAuthorityPair},
 };
 
-use crate::{error::ErrorCode, Campaign, CAMPAIGN, COLLECTION, UPDATE_AUTH};
+use crate::{error::ErrorCode, Campaign, InitializeEvent, CAMPAIGN, COLLECTION, UPDATE_AUTH};
 
 // What `#[derive(BundledPubkeys)]` buys us (host/test builds only):
 //
@@ -110,7 +110,7 @@ impl<'info> Initialize<'info> {
 
         // starts in future
         require!(
-            campaign.start >= 0 && campaign.start < campaign.end && now > campaign.start,
+            campaign.start >= 0 && campaign.start < campaign.end && now < campaign.start,
             ErrorCode::InvalidTimeline
         );
 
@@ -222,6 +222,20 @@ impl<'info> Initialize<'info> {
         self.deposit_tokens(total_deposit)?;
 
         self.campaign.set_inner(campaign);
+
+        emit!(InitializeEvent {
+            campaign: self.campaign.key(),
+            collection: self.collection.key(),
+            creator: self.creator.key(),
+            mint: mint_to_distribute,
+            merkle_root,
+            start,
+            end,
+            grace_period,
+            total_deposit,
+            is_transferable,
+            timestamp: Clock::get()?.unix_timestamp,
+        });
 
         Ok(())
     }

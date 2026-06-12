@@ -29,7 +29,7 @@ pub fn verify(leaf_hash: [u8; 32], proof: &[[u8; 33]], root: &[u8; 32]) -> bool 
         }
 
         let mut hasher = Keccak256::new();
-        hasher.update(&combined);
+        hasher.update(combined);
         hash = hasher.finalize().into();
     }
 

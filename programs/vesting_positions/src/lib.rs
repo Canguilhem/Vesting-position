@@ -61,4 +61,42 @@ pub mod vesting_positions {
     ) -> Result<()> {
         ctx.accounts.claim(proofs, allocation)
     }
+
+    pub fn exclude_asset(ctx: Context<ExcludeAsset>) -> Result<()> {
+        ctx.accounts.exclude()
+    }
+
+    pub fn freeze_collection(ctx: Context<FreezeCollection>, should_freeze: bool) -> Result<()> {
+        ctx.accounts.toggle_freeze(should_freeze)
+    }
+
+    pub fn freeze_asset(ctx: Context<FreezeAsset>, should_freeze: bool) -> Result<()> {
+        ctx.accounts.toggle_freeze(should_freeze)
+    }
+
+    pub fn clawback(ctx: Context<Clawback>) -> Result<()> {
+        ctx.accounts.clawback()
+    }
+
+    pub fn clawback_unclaimed(
+        ctx: Context<ClawbackUnclaimed>,
+        original_recipient: Pubkey,
+        allocation: u64,
+        proofs: Vec<[u8; 33]>,
+    ) -> Result<()> {
+        ctx.accounts
+            .clawback_unclaimed(original_recipient, allocation, proofs)
+    }
+
+    pub fn close_campaign(ctx: Context<CloseCampaign>) -> Result<()> {
+        ctx.accounts.close()
+    }
+
+    pub fn cancel_campaign(ctx: Context<CancelCampaign>) -> Result<()> {
+        ctx.accounts.cancel()
+    }
+
+    pub fn close_receipt(ctx: Context<CloseReceipt>) -> Result<()> {
+        ctx.accounts.close()
+    }
 }

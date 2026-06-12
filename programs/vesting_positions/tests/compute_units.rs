@@ -1,7 +1,3 @@
-//! Rough compute-unit profile for SDK budget hints.
-//!
-//! Run: `cargo test -p vesting_positions compute_units -- --nocapture`
-
 mod common;
 
 use anchor_litesvm::TestHelpers;
@@ -10,8 +6,8 @@ use solana_sdk::signer::Signer;
 use vesting_positions::{instruction, test_helpers::VestingBundle};
 
 use common::{
-    default_merkle, fund_keypair, load_whitelist_user, log_tx_cu, DEFAULT_TX_CU, LAMPORTS,
-    MAX_TX_CU, WHITELISTED_1, setup,
+    build_ctx, default_merkle, fund_keypair, load_whitelist_user, log_tx_cu, DEFAULT_TX_CU,
+    LAMPORTS, MAX_TX_CU, WHITELISTED_1,
 };
 
 #[test]
@@ -21,10 +17,10 @@ fn compute_units_profile() {
     let proofs = alice.proofs.clone();
     let allocation = alice.allocation;
 
-    let mut ctx = setup();
+    let mut ctx = build_ctx();
     let now: i64 = 1_700_000_000;
-    let start = now - 86_400;
-    let end = now + 86_400 * 30;
+    let start = now + 86_400;
+    let end = start + 86_400 * 30;
     ctx.svm.warp_to_timestamp(now);
 
     let creator = ctx.svm.create_funded_account(LAMPORTS).unwrap();
@@ -67,7 +63,8 @@ fn compute_units_profile() {
     log_tx_cu("initialize", init.compute_units(), DEFAULT_TX_CU);
     ctx.svm.expire_blockhash();
 
-    // --- first claim ---
+    // --- first claim (claims gated to [start, end + grace)) ---
+    ctx.svm.warp_to_timestamp(start);
     fund_keypair(&mut ctx, &alice.keypair, LAMPORTS);
     let claim_bundle = base.for_claimer(alice.keypair.pubkey());
     let first_ix = ctx.program().build_ix(
@@ -95,7 +92,11 @@ fn compute_units_profile() {
     );
     match ctx.execute_instructions(vec![sub_ix], &[&alice.keypair]) {
         Ok(result) => {
-            log_tx_cu("subsequent_claim (default cap)", result.compute_units(), DEFAULT_TX_CU);
+            log_tx_cu(
+                "subsequent_claim (default cap)",
+                result.compute_units(),
+                DEFAULT_TX_CU,
+            );
             result.assert_success();
         }
         Err(err) => println!("[CU] subsequent_claim (default cap): tx failed — {err}"),

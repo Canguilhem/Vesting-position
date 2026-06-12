@@ -10,22 +10,13 @@
 
 mod common;
 
-use anchor_litesvm::AssertionHelpers;
-use solana_sdk::signer::Signer;
-use vesting_positions::{leaf_hash, verify};
+use anchor_litesvm::{AssertionHelpers, Signer};
+use vesting_positions::{instruction, leaf_hash, verify};
 
 use common::{
-    assert_receipt_set, expect_first_claim_fails, expect_subsequent_claim_fails, first_claim,
-    fund_keypair, load_keypair, load_whitelist_user, random_proofs, subsequent_claim,
-    transfer_position, TestCampaign, MOCK_ALLOC, LAMPORTS, NOT_WHITELISTED, WHITELISTED_1,
-    WHITELISTED_2, default_merkle,
+    assert_receipt_set, fund_keypair, load_keypair, load_whitelist_user, random_proofs, setup,
+    LAMPORTS, MOCK_ALLOC, NOT_WHITELISTED, WHITELISTED_1, WHITELISTED_2,
 };
-
-fn setup() -> (common::MerkleTree, TestCampaign) {
-    let merkle = default_merkle();
-    let f = TestCampaign::from_merkle(&merkle);
-    (merkle, f)
-}
 
 // ---------------------------------------------------------------------------
 // Happy path
@@ -34,7 +25,7 @@ fn setup() -> (common::MerkleTree, TestCampaign) {
 /// Scenario 1: Alice mints her position, then claims vested tokens again.
 #[test]
 fn scenario_1_alice_first_and_subsequent_claim() {
-    let (merkle, mut f) = setup();
+    let (merkle, mut world) = setup(None);
     let alice = load_whitelist_user(&merkle, WHITELISTED_1);
 
     assert!(verify(
@@ -43,67 +34,160 @@ fn scenario_1_alice_first_and_subsequent_claim() {
         &merkle.root,
     ));
 
-    fund_keypair(&mut f.ctx, &alice.keypair, LAMPORTS);
+    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
 
-    let asset = f.asset_for(&alice.keypair.pubkey());
-    first_claim(
-        &mut f,
-        &alice.keypair,
-        alice.proofs.clone(),
-        alice.allocation,
-    );
-    f.ctx.svm.assert_account_exists(&asset);
-    assert_receipt_set(&f, &alice.keypair.pubkey(), alice.allocation);
+    let asset = world.asset_for(&alice.keypair.pubkey());
+    world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
+    world.ctx.svm.assert_account_exists(&asset);
+    assert_receipt_set(&world, &alice.keypair.pubkey(), alice.allocation);
 
-    subsequent_claim(&mut f, &alice.keypair, &asset);
+    let sub_bundle = world
+        .bundle
+        .for_claimer(alice.keypair.pubkey())
+        .with_asset(asset);
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            sub_bundle,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_ok();
+    world.after_tx();
 }
 
 /// Scenario 2: Alice & Bob each mint; Bob claims both after buying Alice's position.
 #[test]
 fn scenario_2_two_users_transfer_and_bob_claims_both() {
-    let (merkle, mut f) = setup();
+    let (merkle, mut world) = setup(None);
     let alice = load_whitelist_user(&merkle, WHITELISTED_1);
     let bob = load_whitelist_user(&merkle, WHITELISTED_2);
 
-    fund_keypair(&mut f.ctx, &alice.keypair, LAMPORTS);
-    fund_keypair(&mut f.ctx, &bob.keypair, LAMPORTS);
+    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
+    fund_keypair(&mut world.ctx, &bob.keypair, LAMPORTS);
 
-    let asset_alice = f.asset_for(&alice.keypair.pubkey());
-    let asset_bob = f.asset_for(&bob.keypair.pubkey());
+    let asset_alice = world.asset_for(&alice.keypair.pubkey());
+    let asset_bob = world.asset_for(&bob.keypair.pubkey());
 
-    first_claim(&mut f, &alice.keypair, alice.proofs, alice.allocation);
-    first_claim(&mut f, &bob.keypair, bob.proofs, bob.allocation);
+    world.first_claim_ok(&alice.keypair, alice.proofs, alice.allocation);
+    world.first_claim_ok(&bob.keypair, bob.proofs, bob.allocation);
 
-    transfer_position(&mut f, &alice.keypair, &bob.keypair.pubkey(), &asset_alice);
+    let transfer_ix =
+        world.transfer_asset_ix(&alice.keypair.pubkey(), &bob.keypair.pubkey(), &asset_alice);
+    world.ctx.tx(&[&alice.keypair]).ix(transfer_ix).send_ok();
+    world.after_tx();
 
-    subsequent_claim(&mut f, &bob.keypair, &asset_alice);
-    subsequent_claim(&mut f, &bob.keypair, &asset_bob);
+    let bob_claim_alice = world
+        .bundle
+        .for_claimer(bob.keypair.pubkey())
+        .with_asset(asset_alice);
+    world
+        .ctx
+        .tx(&[&bob.keypair])
+        .build(
+            bob_claim_alice,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_ok();
+    world.after_tx();
+
+    let bob_claim_bob = world
+        .bundle
+        .for_claimer(bob.keypair.pubkey())
+        .with_asset(asset_bob);
+    world
+        .ctx
+        .tx(&[&bob.keypair])
+        .build(
+            bob_claim_bob,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_ok();
+    world.after_tx();
 }
 
 /// Scenario 3: Alice → Bob → Alice buyback; Alice claims again on the same NFT.
 #[test]
 fn scenario_3_buyback_alice_claims_again() {
-    let (merkle, mut f) = setup();
+    let (merkle, mut world) = setup(None);
     let alice = load_whitelist_user(&merkle, WHITELISTED_1);
     let bob = load_whitelist_user(&merkle, WHITELISTED_2);
 
-    fund_keypair(&mut f.ctx, &alice.keypair, LAMPORTS);
-    fund_keypair(&mut f.ctx, &bob.keypair, LAMPORTS);
+    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
+    fund_keypair(&mut world.ctx, &bob.keypair, LAMPORTS);
 
-    let asset = f.asset_for(&alice.keypair.pubkey());
-    first_claim(
-        &mut f,
-        &alice.keypair,
-        alice.proofs,
-        alice.allocation,
-    );
-    subsequent_claim(&mut f, &alice.keypair, &asset);
+    let asset = world.asset_for(&alice.keypair.pubkey());
+    world.first_claim_ok(&alice.keypair, alice.proofs, alice.allocation);
 
-    transfer_position(&mut f, &alice.keypair, &bob.keypair.pubkey(), &asset);
-    subsequent_claim(&mut f, &bob.keypair, &asset);
+    let alice_sub = world
+        .bundle
+        .for_claimer(alice.keypair.pubkey())
+        .with_asset(asset);
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            alice_sub,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_ok();
+    world.after_tx();
 
-    transfer_position(&mut f, &bob.keypair, &alice.keypair.pubkey(), &asset);
-    subsequent_claim(&mut f, &alice.keypair, &asset);
+    let alice_to_bob =
+        world.transfer_asset_ix(&alice.keypair.pubkey(), &bob.keypair.pubkey(), &asset);
+    world.ctx.tx(&[&alice.keypair]).ix(alice_to_bob).send_ok();
+    world.after_tx();
+
+    let bob_sub = world
+        .bundle
+        .for_claimer(bob.keypair.pubkey())
+        .with_asset(asset);
+    world
+        .ctx
+        .tx(&[&bob.keypair])
+        .build(
+            bob_sub,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_ok();
+    world.after_tx();
+
+    let bob_to_alice =
+        world.transfer_asset_ix(&bob.keypair.pubkey(), &alice.keypair.pubkey(), &asset);
+    world.ctx.tx(&[&bob.keypair]).ix(bob_to_alice).send_ok();
+    world.after_tx();
+
+    let alice_sub_2 = world
+        .bundle
+        .for_claimer(alice.keypair.pubkey())
+        .with_asset(asset);
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            alice_sub_2,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_ok();
+    world.after_tx();
 }
 
 // ---------------------------------------------------------------------------
@@ -113,102 +197,138 @@ fn scenario_3_buyback_alice_claims_again() {
 /// Scenario 4: Replay first claim with same proofs → AlreadyClaimed.
 #[test]
 fn scenario_4_replay_first_claim_fails() {
-    let (merkle, mut f) = setup();
+    let (merkle, mut world) = setup(None);
     let alice = load_whitelist_user(&merkle, WHITELISTED_1);
-    fund_keypair(&mut f.ctx, &alice.keypair, LAMPORTS);
+    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
 
-    first_claim(
-        &mut f,
-        &alice.keypair,
-        alice.proofs.clone(),
-        alice.allocation,
-    );
+    world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
 
-    expect_first_claim_fails(
-        &mut f,
-        &alice.keypair,
-        alice.proofs,
-        alice.allocation,
-        "AlreadyClaimed",
-    );
+    let replay = world.bundle.for_claimer(alice.keypair.pubkey());
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            replay,
+            instruction::Claim {
+                proofs: Some(alice.proofs),
+                allocation: Some(alice.allocation),
+            },
+        )
+        .send_err_named("AlreadyClaimed");
+    world.after_tx();
 }
 
 /// Scenario 5: Carol (not whitelisted) cannot first-claim.
 #[test]
 fn scenario_5_unwhitelisted_user_fails() {
-    let (_merkle, mut f) = setup();
+    let (_merkle, mut world) = setup(None);
     let carol = load_keypair(NOT_WHITELISTED);
-    fund_keypair(&mut f.ctx, &carol, LAMPORTS);
+    fund_keypair(&mut world.ctx, &carol, LAMPORTS);
+    world.warp_to(world.start);
 
-    expect_first_claim_fails(
-        &mut f,
-        &carol,
-        random_proofs(),
-        MOCK_ALLOC,
-        "InvalidProofs",
-    );
+    let bundle = world.bundle.for_claimer(carol.pubkey());
+    world
+        .ctx
+        .tx(&[&carol])
+        .build(
+            bundle,
+            instruction::Claim {
+                proofs: Some(random_proofs()),
+                allocation: Some(MOCK_ALLOC),
+            },
+        )
+        .send_err_named("InvalidProofs");
+    world.after_tx();
 }
 
 /// Scenario 6: Alice cannot subsequent-claim on Bob's NFT.
 #[test]
 fn scenario_6_not_owner_subsequent_claim_fails() {
-    let (merkle, mut f) = setup();
+    let (merkle, mut world) = setup(None);
     let alice = load_whitelist_user(&merkle, WHITELISTED_1);
     let bob = load_whitelist_user(&merkle, WHITELISTED_2);
 
-    fund_keypair(&mut f.ctx, &alice.keypair, LAMPORTS);
-    fund_keypair(&mut f.ctx, &bob.keypair, LAMPORTS);
+    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
+    fund_keypair(&mut world.ctx, &bob.keypair, LAMPORTS);
 
-    let asset_bob = f.asset_for(&bob.keypair.pubkey());
-    first_claim(
-        &mut f,
-        &bob.keypair,
-        bob.proofs,
-        bob.allocation,
-    );
+    let asset_bob = world.asset_for(&bob.keypair.pubkey());
+    world.first_claim_ok(&bob.keypair, bob.proofs, bob.allocation);
 
-    expect_subsequent_claim_fails(
-        &mut f,
-        &alice.keypair,
-        &asset_bob,
-        "NotAssetOwner",
-    );
+    let bundle = world
+        .bundle
+        .for_claimer(alice.keypair.pubkey())
+        .with_asset(asset_bob);
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            bundle,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_err_named("NotAssetOwner");
+    world.after_tx();
 }
 
 /// Scenario 7: Fully claimed position → AlreadyFullyClaimed.
 #[test]
 fn scenario_7_fully_claimed_position_frozen() {
-    let (merkle, mut f) = setup();
+    let (merkle, mut world) = setup(None);
     let alice = load_whitelist_user(&merkle, WHITELISTED_1);
-    fund_keypair(&mut f.ctx, &alice.keypair, LAMPORTS);
+    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
 
-    let asset = f.asset_for(&alice.keypair.pubkey());
-    first_claim(
-        &mut f,
-        &alice.keypair,
-        alice.proofs,
-        alice.allocation,
-    );
+    let asset = world.asset_for(&alice.keypair.pubkey());
+    world.first_claim_ok(&alice.keypair, alice.proofs, alice.allocation);
     assert!(
-        !f.permanent_freeze_delegate(&asset).frozen,
+        !world.fetch_permanent_freeze_delegate(&asset).frozen,
         "position must stay transferable until fully claimed"
     );
 
-    f.warp_past_end();
-    subsequent_claim(&mut f, &alice.keypair, &asset);
+    world.warp_past_end();
+    let sub_bundle = world
+        .bundle
+        .for_claimer(alice.keypair.pubkey())
+        .with_asset(asset);
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            sub_bundle,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_ok();
+    world.after_tx();
 
-    assert_eq!(f.claimer_token_balance(&alice.keypair.pubkey()), alice.allocation);
+    assert_eq!(
+        world.claimer_token_balance(&alice.keypair.pubkey()),
+        alice.allocation
+    );
     assert!(
-        f.permanent_freeze_delegate(&asset).frozen,
+        world.fetch_permanent_freeze_delegate(&asset).frozen,
         "loyalty badge must be permanently frozen after full claim"
     );
 
-    expect_subsequent_claim_fails(
-        &mut f,
-        &alice.keypair,
-        &asset,
-        "AlreadyFullyClaimed",
-    );
+    let replay = world
+        .bundle
+        .for_claimer(alice.keypair.pubkey())
+        .with_asset(asset);
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            replay,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_err_named("AlreadyFullyClaimed");
+    world.after_tx();
 }
 
 /// Scenario 8: Subsequent claim with wrong asset address → InvalidAsset.
@@ -216,10 +336,129 @@ fn scenario_7_fully_claimed_position_frozen() {
 fn scenario_8_wrong_asset_subsequent_claim_fails() {
     use anchor_lang::prelude::Pubkey;
 
-    let (_merkle, mut f) = setup();
+    let (_merkle, mut world) = setup(None);
     let bob = load_keypair(NOT_WHITELISTED);
-    fund_keypair(&mut f.ctx, &bob, LAMPORTS);
+    fund_keypair(&mut world.ctx, &bob, LAMPORTS);
+    world.warp_to(world.start);
 
     let ghost_asset = Pubkey::new_unique();
-    expect_subsequent_claim_fails(&mut f, &bob, &ghost_asset, "InvalidAsset");
+    let bundle = world
+        .bundle
+        .for_claimer(bob.pubkey())
+        .with_asset(ghost_asset);
+    world
+        .ctx
+        .tx(&[&bob])
+        .build(
+            bundle,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_err_named("InvalidAsset");
+    world.after_tx();
+}
+
+/// Scenario 10: No claims before `start`, even with valid proofs.
+#[test]
+fn scenario_10_claim_before_start_fails() {
+    let (merkle, mut world) = setup(None);
+    let alice = load_whitelist_user(&merkle, WHITELISTED_1);
+    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
+
+    // Clock is still at campaign-setup time (before start).
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            world.bundle.for_claimer(alice.keypair.pubkey()),
+            instruction::Claim {
+                proofs: Some(alice.proofs.clone()),
+                allocation: Some(alice.allocation),
+            },
+        )
+        .send_err_named("CampaignNotStarted");
+    world.after_tx();
+}
+
+/// Scenario 9: Claim works until the last second of the grace window, then
+/// closes with ClaimWindowClosed (clawback takes over from there).
+#[test]
+fn scenario_9_claim_window_closes_after_grace() {
+    let (merkle, mut world) = setup(None);
+    let alice = load_whitelist_user(&merkle, WHITELISTED_1);
+    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
+
+    let asset = world.asset_for(&alice.keypair.pubkey());
+    world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
+
+    // Last moment inside the window → full allocation still claimable.
+    world.warp_to(world.end + world.grace_period as i64 - 1);
+    let sub = world
+        .bundle
+        .for_claimer(alice.keypair.pubkey())
+        .with_asset(asset);
+    world
+        .ctx
+        .tx(&[&alice.keypair])
+        .build(
+            sub,
+            instruction::Claim {
+                proofs: None,
+                allocation: None,
+            },
+        )
+        .send_ok();
+    world.after_tx();
+    assert_eq!(
+        world.claimer_token_balance(&alice.keypair.pubkey()),
+        alice.allocation
+    );
+
+    // At end + grace_period the window is closed, even for a first claim.
+    let bob = load_whitelist_user(&merkle, WHITELISTED_2);
+    fund_keypair(&mut world.ctx, &bob.keypair, LAMPORTS);
+    world.warp_to(world.end + world.grace_period as i64);
+    world
+        .ctx
+        .tx(&[&bob.keypair])
+        .build(
+            world.bundle.for_claimer(bob.keypair.pubkey()),
+            instruction::Claim {
+                proofs: Some(bob.proofs.clone()),
+                allocation: Some(bob.allocation),
+            },
+        )
+        .send_err_named("ClaimWindowClosed");
+    world.after_tx();
+}
+
+/// Scenario 11: Minted positions inherit the collection's name and uri
+/// (set at initialize) instead of hardcoded placeholders.
+#[test]
+fn scenario_11_position_metadata_mirrors_collection() {
+    use mpl_core::accounts::{BaseAssetV1, BaseCollectionV1};
+
+    let (merkle, mut world) = setup(None);
+    let alice = load_whitelist_user(&merkle, WHITELISTED_1);
+    fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
+
+    let asset = world.asset_for(&alice.keypair.pubkey());
+    world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
+
+    let collection_account = world
+        .ctx
+        .svm
+        .get_account(&world.bundle.collection)
+        .expect("collection account");
+    let collection =
+        BaseCollectionV1::from_bytes(&collection_account.data).expect("collection data");
+
+    let asset_account = world.ctx.svm.get_account(&asset).expect("asset account");
+    let asset_data = BaseAssetV1::from_bytes(&asset_account.data).expect("asset data");
+
+    assert_eq!(asset_data.name, collection.name);
+    assert_eq!(asset_data.uri, collection.uri);
+    assert_eq!(asset_data.name, "Vesting campaign");
 }
