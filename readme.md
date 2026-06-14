@@ -276,9 +276,7 @@ close_campaign:  hard fails if campaign_ata.amount != 0
 keccak256( lowercase(base58(pubkey)) || decimal_string(allocation) )
 ```
 
-The leaf preimage is a **string**: the lowercased base58 pubkey concatenated with the allocation rendered in decimal. This matches the TS generator (`yarn run generate-merkle-tree`) and the test fixtures.
-
-> Planned before deployment: migrate to raw-byte leaves
+> Planned before production deployement: migrate to raw-byte leaves
 > (`keccak256(pubkey_bytes || allocation_le_bytes)`), which is cheaper on-chain
 > and not dependent on string formatting. Requires regenerating the generator
 > output and fixtures in lockstep.
@@ -357,7 +355,7 @@ Events replace per-owner claim history storage on-chain. An indexer reconstructs
 ### Build
 
 ```bash
-cargo build-sbf        # or: anchor build
+anchor build
 ```
 
 ### Test
