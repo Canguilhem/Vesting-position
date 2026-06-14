@@ -569,9 +569,9 @@ fn full_lifecycle() {
         "allocation"       => alice.allocation,
         "expected release" => cliff_amount,
     });
-    world
-        .first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation)
-        .print_markdown_pair();
+    let first_claim =
+        world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
+    world.record_execution("Act 1 — alice first claim", &first_claim);
     md.check("position nft exists", true, world.ctx.account_exists(&asset));
     md.check(
         "position nft owner is alice",
@@ -603,7 +603,7 @@ fn full_lifecycle() {
         .bundle
         .for_claimer(alice.keypair.pubkey())
         .with_asset(asset);
-    world
+    let sub_claim = world
         .ctx
         .tx(&[&alice.keypair])
         .build(
@@ -615,8 +615,8 @@ fn full_lifecycle() {
                 uri: "https://example.com".to_string(),
             },
         )
-        .send_ok()
-        .print_markdown_pair();
+        .send_ok();
+    world.record_execution("Act 2 — alice subsequent claim", &sub_claim);
     world.after_tx();
     md.check(
         "additional vesting credited",
@@ -657,7 +657,7 @@ fn full_lifecycle() {
         "Alice replays merkle proofs after transferring the NFT; the claim receipt blocks a second position",
     );
     let merkle_replay = world.bundle.for_claimer(alice.keypair.pubkey());
-    world
+    let replay = world
         .ctx
         .tx(&[&alice.keypair])
         .build(
@@ -669,8 +669,8 @@ fn full_lifecycle() {
                 uri: "https://example.com".to_string(),
             },
         )
-        .send_err_named("AlreadyClaimed")
-        .print_markdown_pair();
+        .send_err_named("AlreadyClaimed");
+    world.record_execution("Act 3 — merkle replay rejected", &replay);
     world.after_tx();
     md.check(
         "claim receipt still bound to alice",
@@ -706,7 +706,7 @@ fn full_lifecycle() {
         .bundle
         .for_claimer(bob.pubkey())
         .with_asset(asset);
-    world
+    let bob_claim = world
         .ctx
         .tx(&[&bob])
         .build(
@@ -718,8 +718,8 @@ fn full_lifecycle() {
                 uri: "https://example.com".to_string(),
             },
         )
-        .send_ok()
-        .print_markdown_pair();
+        .send_ok();
+    world.record_execution("Act 4 — bob claim via nft ownership", &bob_claim);
     world.after_tx();
     md.check(
         "bob credited without merkle proofs",
@@ -731,4 +731,6 @@ fn full_lifecycle() {
         bob.pubkey(),
         world.asset_owner(&asset),
     );
+
+    world.report_execution(&mut md);
 }

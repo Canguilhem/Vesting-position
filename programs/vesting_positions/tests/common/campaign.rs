@@ -5,7 +5,8 @@ use anchor_lang::solana_program::{
     account_info::AccountInfo, instruction::Instruction, system_program,
 };
 use anchor_litesvm::{
-    AnchorLiteSVM, Signer, TestHelpers, TransactionHelpers, TransactionResult,
+    AnchorLiteSVM, MarkdownBlock, Report, Signer, TestHelpers, TransactionHelpers,
+    TransactionResult,
 };
 use mpl_core::{
     accounts::{BaseAssetV1, BaseCollectionV1},
@@ -39,6 +40,12 @@ pub fn log_tx_cu(label: &str, consumed: u64, limit: u32) {
             ""
         }
     );
+}
+
+struct ExecutionEntry {
+    label: String,
+    logs: String,
+    mermaid: String,
 }
 
 use super::merkle::{default_merkle, MerkleTree, TOTAL_DEPOSIT};
@@ -106,9 +113,49 @@ pub struct TestCampaign {
     pub is_transferable: bool,
     pub grace_period: u64,
     pub total_deposit: u64,
+    execution: Vec<ExecutionEntry>,
 }
 
 impl TestCampaign {
+    /// Record a transaction for [`Self::report_execution`].
+    pub fn record_execution(&mut self, label: impl Into<String>, result: &TransactionResult) {
+        self.execution.push(ExecutionEntry {
+            label: label.into(),
+            logs: result.logs_structured_string(),
+            mermaid: result.mermaid_string(),
+        });
+    }
+
+    /// Append structured logs and CPI sequence diagrams to a report.
+    ///
+    /// Compat substitute for turbin3's `ctx.report_execution`: uses
+    /// [`TransactionResult::logs_structured_string`] and
+    /// [`TransactionResult::mermaid_string`] (no authority-flow / account index).
+    pub fn report_execution(&self, md: &mut Report) {
+        if self.execution.is_empty() {
+            return;
+        }
+        let logs: String = self
+            .execution
+            .iter()
+            .map(|e| format!("### {}\n```console\n{}\n```", e.label, e.logs.trim()))
+            .collect::<Vec<_>>()
+            .join("\n\n");
+        md.block(
+            "Structured logs",
+            MarkdownBlock::Fenced {
+                lang: "text".into(),
+                body: logs,
+            },
+        );
+        for e in &self.execution {
+            if e.mermaid.is_empty() {
+                continue;
+            }
+            md.note(format!("**{} — CPI sequence**\n\n{}", e.label, e.mermaid.trim()));
+        }
+    }
+
     pub fn cliff_end(&self) -> i64 {
         self.start + self.cliff_duration as i64
     }
@@ -349,6 +396,7 @@ impl TestCampaign {
             is_transferable: config.is_transferable,
             grace_period: config.grace_period,
             total_deposit: config.total_deposit,
+            execution: Vec::new(),
         }
     }
 
