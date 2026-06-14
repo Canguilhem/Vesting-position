@@ -8,6 +8,9 @@ skip-lint = false
 [programs.localnet]
 vesting_positions = "4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3"
 
+[programs.devnet]
+vesting_positions = "4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3"
+
 [registry]
 url = "https://api.apr.dev"
 

@@ -244,7 +244,7 @@ dependencies = [
 [[package]]
 name = "anchor-litesvm"
 version = "0.4.0-anchor-0.31"
-source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#9e02c833e2374f2871e882c52de5fd5d710dcd90"
+source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#b1d89e5fdcdc7da7626a020d3533e81b5fe99ac8"
 dependencies = [
  "anchor-lang",
  "anchor-litesvm-derive",
@@ -263,7 +263,7 @@ dependencies = [
 [[package]]
 name = "anchor-litesvm-derive"
 version = "0.4.0-anchor-0.31"
-source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#9e02c833e2374f2871e882c52de5fd5d710dcd90"
+source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#b1d89e5fdcdc7da7626a020d3533e81b5fe99ac8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1865,8 +1865,7 @@ checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 [[package]]
 name = "litesvm"
 version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb7e5f4462f34439adcfcab58099bc7a89c67a17f8240b84a993b8b705c1becb"
+source = "git+https://github.com/cds-rs/litesvm?branch=compat%2Fanchor-0.31#c572f9091827692bb8776a8f54b82f1d02014e6e"
 dependencies = [
  "ansi_term",
  "bincode",
@@ -1928,7 +1927,7 @@ dependencies = [
 [[package]]
 name = "litesvm-utils"
 version = "0.4.0-anchor-0.31"
-source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#9e02c833e2374f2871e882c52de5fd5d710dcd90"
+source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#b1d89e5fdcdc7da7626a020d3533e81b5fe99ac8"
 dependencies = [
  "indexmap",
  "litesvm",
