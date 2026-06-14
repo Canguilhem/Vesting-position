@@ -11,6 +11,7 @@
 mod common;
 
 use anchor_litesvm::{AssertionHelpers, Report, Signer, md_kv, md_table};
+use mpl_core;
 use vesting_positions::{instruction, leaf_hash, verify, Campaign};
 
 use common::{
@@ -483,6 +484,8 @@ fn full_lifecycle() {
     world.ctx.alias(alice.keypair.pubkey(), "Alice");
     world.ctx.alias(bob.pubkey(), "Bob");
     world.ctx.alias(world.bundle.creator, "campaign creator");
+    world.ctx.alias(vesting_positions::ID, "vesting_positions");
+    world.ctx.alias(mpl_core::ID, "mpl_core");
 
     md.block(
         "actors pubkeys",
@@ -566,7 +569,9 @@ fn full_lifecycle() {
         "allocation"       => alice.allocation,
         "expected release" => cliff_amount,
     });
-    world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
+    world
+        .first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation)
+        .print_markdown_pair();
     md.check("position nft exists", true, world.ctx.account_exists(&asset));
     md.check(
         "position nft owner is alice",
@@ -610,7 +615,8 @@ fn full_lifecycle() {
                 uri: "https://example.com".to_string(),
             },
         )
-        .send_ok();
+        .send_ok()
+        .print_markdown_pair();
     world.after_tx();
     md.check(
         "additional vesting credited",
@@ -647,6 +653,9 @@ fn full_lifecycle() {
         alice.keypair.pubkey() != world.asset_owner(&asset),
         true,
     );
+    md.note(
+        "Alice replays merkle proofs after transferring the NFT; the claim receipt blocks a second position",
+    );
     let merkle_replay = world.bundle.for_claimer(alice.keypair.pubkey());
     world
         .ctx
@@ -660,17 +669,17 @@ fn full_lifecycle() {
                 uri: "https://example.com".to_string(),
             },
         )
-        .send_err_named("AlreadyClaimed");
+        .send_err_named("AlreadyClaimed")
+        .print_markdown_pair();
     world.after_tx();
     md.check(
         "claim receipt still bound to alice",
         alice.keypair.pubkey(),
         world
             .ctx
-            .get_account::<vesting_positions::ClaimReceipt>(
+            .load::<vesting_positions::ClaimReceipt>(
                 &world.bundle.for_claimer(alice.keypair.pubkey()).claim_receipt,
             )
-            .unwrap()
             .claimer,
     );
 
@@ -690,6 +699,9 @@ fn full_lifecycle() {
         "claimed so far"     => alice_claimed,
         "expected release"   => bob_expected,
     });
+    md.note(
+        "Bob was never whitelisted; NFT ownership alone authorizes the subsequent claim",
+    );
     let bob_claim = world
         .bundle
         .for_claimer(bob.pubkey())
@@ -706,7 +718,8 @@ fn full_lifecycle() {
                 uri: "https://example.com".to_string(),
             },
         )
-        .send_ok();
+        .send_ok()
+        .print_markdown_pair();
     world.after_tx();
     md.check(
         "bob credited without merkle proofs",

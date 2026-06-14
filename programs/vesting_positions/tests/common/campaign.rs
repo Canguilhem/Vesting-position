@@ -4,7 +4,9 @@ use anchor_lang::prelude::Pubkey;
 use anchor_lang::solana_program::{
     account_info::AccountInfo, instruction::Instruction, system_program,
 };
-use anchor_litesvm::{AnchorLiteSVM, Signer, TestHelpers, TransactionHelpers};
+use anchor_litesvm::{
+    AnchorLiteSVM, Signer, TestHelpers, TransactionHelpers, TransactionResult,
+};
 use mpl_core::{
     accounts::{BaseAssetV1, BaseCollectionV1},
     fetch_plugin,
@@ -22,8 +24,9 @@ const MPL_CORE_BYTES: &[u8] = include_bytes!("../../../../tests/fixtures/mpl_cor
 /// Solana default per-tx compute cap when no `ComputeBudget` ix is present.
 pub const DEFAULT_TX_CU: u32 = 200_000;
 
-/// Network max per-tx compute cap.
-pub const MAX_TX_CU: u32 = 1_400_000;
+/// First claim budget: mint-only ~175–187k; full allocation + freeze ~202–230k
+/// (see `compute_units_profile`). Default 200k is insufficient.
+pub const FIRST_CLAIM_CU: u32 = 250_000;
 
 /// Log consumed vs requested limit (run with `cargo test compute_units -- --nocapture`).
 pub fn log_tx_cu(label: &str, consumed: u64, limit: u32) {
@@ -111,7 +114,7 @@ impl TestCampaign {
     }
 
     pub fn campaign(&self) -> Campaign {
-        self.ctx.get_account(&self.bundle.campaign).unwrap()
+        self.ctx.load(&self.bundle.campaign)
     }
 
     pub fn warp_to(&mut self, timestamp: i64) {
@@ -266,17 +269,22 @@ impl TestCampaign {
             .instruction()
     }
 
-    /// First claim mints the position NFT (mpl-core CreateV2 CPI) and exceeds
-    /// the default 200k CU cap. All other test txs use `ctx.tx()` without budget.
-    /// Claims are gated to `[start, end + grace)`, so warp to `start` if the
-    /// clock is still at campaign-setup time.
-    pub fn first_claim_ok(&mut self, user: &Keypair, proofs: Vec<[u8; 33]>, allocation: u64) {
+    /// Increase CU limit:
+    /// First claim mints the position NFT (mpl-core CreateV2 CPI)
+    /// Full-allocation path exceeds the 200k default
+    /// Subsequent claims use `ctx.tx()` without a compute budget.
+    pub fn first_claim_ok(
+        &mut self,
+        user: &Keypair,
+        proofs: Vec<[u8; 33]>,
+        allocation: u64,
+    ) -> TransactionResult {
         if self.ctx.svm.get_unix_timestamp() < self.start {
             self.warp_to(self.start);
         }
         let bundle = self.bundle.for_claimer(user.pubkey());
-        let budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(MAX_TX_CU);
-        let ix = self.ctx.program().build_ix(
+        let budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(FIRST_CLAIM_CU);
+        let claim_ix = self.ctx.program().build_ix(
             bundle,
             instruction::Claim {
                 proofs: Some(proofs),
@@ -285,13 +293,14 @@ impl TestCampaign {
                 uri: "https://example.com".to_string(),
             },
         );
-        self.ctx
-            .svm
-            .send_instructions(&[budget_ix, ix], &[user])
-            .expect("send_instructions failed")
+        let result = self
+            .ctx
+            .execute_instructions(vec![budget_ix, claim_ix], &[user])
+            .expect("first claim")
             .with_aliases(self.ctx.aliases.clone())
             .assert_success();
         self.after_tx();
+        result
     }
 
     pub fn from_merkle(tree: &MerkleTree, config: CampaignConfig) -> Self {
@@ -405,6 +414,6 @@ pub fn transfer_changes_owner(
 
 pub fn assert_receipt_set(world: &TestCampaign, user: &Pubkey) {
     let bundle = world.bundle.for_claimer(*user);
-    let receipt: ClaimReceipt = world.ctx.get_account(&bundle.claim_receipt).unwrap();
+    let receipt: ClaimReceipt = world.ctx.load(&bundle.claim_receipt);
     assert_eq!(receipt.claimer, *user);
 }

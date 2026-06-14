@@ -1,13 +1,12 @@
 mod common;
 
 use anchor_litesvm::TestHelpers;
-use solana_sdk::compute_budget::ComputeBudgetInstruction;
-use solana_sdk::signer::Signer;
+use solana_sdk::{compute_budget::ComputeBudgetInstruction, signer::Signer};
 use vesting_positions::{instruction, test_helpers::VestingBundle};
 
 use common::{
     build_ctx, default_merkle, fund_keypair, load_whitelist_user, log_tx_cu, DEFAULT_TX_CU,
-    LAMPORTS, MAX_TX_CU, WHITELISTED_1,
+    FIRST_CLAIM_CU, LAMPORTS, WHITELISTED_1,
 };
 
 #[test]
@@ -39,7 +38,6 @@ fn compute_units_profile() {
         )
         .unwrap();
 
-    // --- initialize (no compute budget ix) ---
     let init_ix = ctx.program().build_ix(
         base,
         instruction::Initialize {
@@ -63,12 +61,69 @@ fn compute_units_profile() {
     log_tx_cu("initialize", init.compute_units(), DEFAULT_TX_CU);
     ctx.svm.expire_blockhash();
 
-    // --- first claim (claims gated to [start, end + grace)) ---
-    ctx.svm.warp_to_timestamp(start);
     fund_keypair(&mut ctx, &alice.keypair, LAMPORTS);
     let claim_bundle = base.for_claimer(alice.keypair.pubkey());
-    let first_ix = ctx.program().build_ix(
+
+    // First claim at start: mints NFT, zero tokens released (before cliff).
+    ctx.svm.warp_to_timestamp(start);
+    let first_mint_ix = ctx.program().build_ix(
         claim_bundle,
+        instruction::Claim {
+            proofs: Some(proofs.clone()),
+            allocation: Some(allocation),
+            name: "Test asset".to_string(),
+            uri: "https://example.com".to_string(),
+        },
+    );
+    let first_mint = ctx
+        .execute_instructions(vec![first_mint_ix], &[&alice.keypair])
+        .expect("first claim (mint only)")
+        .assert_success();
+    log_tx_cu("first_claim (mint only)", first_mint.compute_units(), DEFAULT_TX_CU);
+    ctx.svm.expire_blockhash();
+
+    // First claim at end: full allocation + loyalty-badge freeze (heaviest path).
+    let mut ctx2 = build_ctx();
+    ctx2.svm.warp_to_timestamp(now);
+    let creator2 = ctx2.svm.create_funded_account(LAMPORTS).unwrap();
+    let mint2 = ctx2.svm.create_token_mint(&creator2, 6).unwrap();
+    let base2 = VestingBundle::init(creator2.pubkey(), mint2.pubkey(), &merkle.root);
+    ctx2.svm
+        .create_associated_token_account(&base2.mint, &creator2)
+        .unwrap();
+    ctx2.svm
+        .mint_to(
+            &base2.mint,
+            &base2.creator_ata,
+            &creator2,
+            common::TOTAL_DEPOSIT,
+        )
+        .unwrap();
+    let init2_ix = ctx2.program().build_ix(
+        base2,
+        instruction::Initialize {
+            merkle_root: merkle.root,
+            start,
+            end,
+            cliff_duration: 86_400,
+            cliff_release_bps: 1_000,
+            mint_to_distribute: base2.mint,
+            is_transferable: true,
+            grace_period: 604_800,
+            total_deposit: common::TOTAL_DEPOSIT,
+            name: "Vesting campaign".to_string(),
+            uri: "https://example.com/collection.json".to_string(),
+        },
+    );
+    ctx2.execute_instructions(vec![init2_ix], &[&creator2])
+        .expect("initialize 2")
+        .assert_success();
+    ctx2.svm.expire_blockhash();
+    fund_keypair(&mut ctx2, &alice.keypair, LAMPORTS);
+    ctx2.svm.warp_to_timestamp(end + 1);
+    let full_bundle = base2.for_claimer(alice.keypair.pubkey());
+    let full_ix = ctx2.program().build_ix(
+        full_bundle,
         instruction::Claim {
             proofs: Some(proofs),
             allocation: Some(allocation),
@@ -76,15 +131,21 @@ fn compute_units_profile() {
             uri: "https://example.com".to_string(),
         },
     );
-    let budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(MAX_TX_CU);
-    let first = ctx
-        .execute_instructions(vec![budget_ix, first_ix], &[&alice.keypair])
-        .expect("first claim")
+    let budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(FIRST_CLAIM_CU);
+    let first_full = ctx2
+        .execute_instructions(vec![budget_ix, full_ix], &[&alice.keypair])
+        .expect("first claim (full allocation)")
         .assert_success();
-    log_tx_cu("first_claim", first.compute_units(), MAX_TX_CU);
-    ctx.svm.expire_blockhash();
+    log_tx_cu(
+        "first_claim (full allocation)",
+        first_full.compute_units(),
+        FIRST_CLAIM_CU,
+    );
+    assert!(
+        first_full.compute_units() <= FIRST_CLAIM_CU as u64,
+        "first claim (full allocation) exceeds FIRST_CLAIM_CU"
+    );
 
-    // --- subsequent claim at default 200k cap ---
     let sub_ix = ctx.program().build_ix(
         claim_bundle,
         instruction::Claim {
@@ -94,39 +155,22 @@ fn compute_units_profile() {
             uri: "https://example.com".to_string(),
         },
     );
-    match ctx.execute_instructions(vec![sub_ix], &[&alice.keypair]) {
-        Ok(result) => {
-            log_tx_cu(
-                "subsequent_claim (default cap)",
-                result.compute_units(),
-                DEFAULT_TX_CU,
-            );
-            result.assert_success();
-        }
-        Err(err) => println!("[CU] subsequent_claim (default cap): tx failed — {err}"),
-    }
-    ctx.svm.expire_blockhash();
-
-    // --- subsequent claim with explicit max cap (same path, fresh blockhash) ---
-    let sub_ix = ctx.program().build_ix(
-        claim_bundle,
-        instruction::Claim {
-            proofs: None,
-            allocation: None,
-            name: "Test asset".to_string(),
-            uri: "https://example.com".to_string(),
-        },
-    );
-    let budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(MAX_TX_CU);
     let sub = ctx
-        .execute_instructions(vec![budget_ix, sub_ix], &[&alice.keypair])
+        .execute_instructions(vec![sub_ix], &[&alice.keypair])
         .expect("subsequent claim")
         .assert_success();
-    log_tx_cu("subsequent_claim (max cap)", sub.compute_units(), MAX_TX_CU);
+    log_tx_cu("subsequent_claim", sub.compute_units(), DEFAULT_TX_CU);
 
-    println!(
-        "\nSDK hint: setComputeUnitLimit({}) for first claim; subsequent likely fits in {}",
-        first.compute_units() * 110 / 100,
-        DEFAULT_TX_CU,
+    assert!(
+        init.compute_units() <= DEFAULT_TX_CU as u64,
+        "initialize exceeds default cap"
+    );
+    assert!(
+        first_mint.compute_units() <= DEFAULT_TX_CU as u64,
+        "first claim (mint only) exceeds default cap"
+    );
+    assert!(
+        sub.compute_units() <= DEFAULT_TX_CU as u64,
+        "subsequent claim exceeds default cap"
     );
 }
