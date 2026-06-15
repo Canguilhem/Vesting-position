@@ -35,7 +35,14 @@ fn vested_tokens_are_forfeited_past_the_grace_window() {
     let first = world.first_claim_ok(&alice.keypair, alice.proofs.clone(), alice.allocation);
     world.record_execution("Act 1 — Alice claims the cliff", &first);
     let cliff = world.claimer_token_balance(&alice.keypair.pubkey());
-    md.check("Alice received her cliff unlock", true, cliff > 0);
+    let expected_cliff = world.expected_claimable(world.cliff_end(), alice.allocation, 0);
+    md.transition(
+        "Alice's token balance, after the cliff claim",
+        0u64,
+        expected_cliff,
+        cliff,
+        "the cliff unlock reached her",
+    );
 
     // --- Campaign end: Alice is 100% vested -----------------------------------
     md.step("Campaign end: Alice is fully vested");
@@ -87,16 +94,21 @@ fn vested_tokens_are_forfeited_past_the_grace_window() {
     world.record_execution("Act 3 — Alice's late claim is refused", &refused);
     world.after_tx();
 
-    // --- The forfeiture, stated plainly ---------------------------------------
-    md.check(
-        "Alice keeps only her cliff (the vested remainder is gone)",
+    // --- The forfeiture, told as two state changes ----------------------------
+    let alice_final = world.claimer_token_balance(&alice.keypair.pubkey());
+    md.transition(
+        "Alice's token balance, across the clawback",
         cliff,
-        world.claimer_token_balance(&alice.keypair.pubkey()),
+        cliff,
+        alice_final,
+        "her vested remainder was forfeited, never delivered",
     );
-    md.check(
-        "the creator recovered exactly Alice's vested remainder",
+    md.transition(
+        "tokens the creator recovered",
+        0u64,
         owed,
         recovered,
+        "the grace window let the creator reclaim fully-vested tokens",
     );
     md.note(
         "This test passes: the grace window is the program's design, working as \
