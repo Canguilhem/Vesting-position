@@ -26,7 +26,7 @@ This test passes: the grace window is the program's design, working as written. 
 ```console
 Transaction  signers=[Alice]
 ├── ComputeBudget [1] ✓ (no cu)
-└── vesting_positions::Claim [1] ✓ 191417cu  signer=Alice
+└── vesting_positions::Claim [1] ✓ 177917cu  signer=Alice
     │ 🔔 ClaimEvent
     │      campaign:           Campaign,
     │      asset:              Alice's position NFT,
@@ -35,7 +35,7 @@ Transaction  signers=[Alice]
     │      amount:             100000000000,
     │      claimed_so_far:     100000000000,
     │      timestamp:          1700172800
-    ├── AssociatedToken::Create [2] ✓ 23389cu
+    ├── AssociatedToken::Create [2] ✓ 20389cu
     │   ├── Token::GetAccountDataSize [3] ✓ 1595cu
     │   ├── System::CreateAccount [3] ✓ (no cu)
     │   ├── Token::InitializeImmutableOwner [3] ✓ 1405cu
@@ -48,7 +48,7 @@ Transaction  signers=[Alice]
     │   ├── System::Transfer [3] ✓ (no cu)
     │   └── System::Transfer [3] ✓ (no cu)
     └── Token::TransferChecked [2] ✓ 6174cu
-Compute Units (this run): 191567
+Compute Units (this run): 178067
 Legend (3):
   Alice             = 4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P
   vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
@@ -59,7 +59,7 @@ Legend (3):
 ```console
 ── vesting_positions::Clawback ─────────────────────────────
 Transaction  signers=[creator]
-└── vesting_positions::Clawback [1] ✓ 87361cu  signer=creator
+└── vesting_positions::Clawback [1] ✓ 84361cu  signer=creator
     │ 🔔 ClawbackEvent
     │      campaign:           Campaign,
     │      asset:              Alice's position NFT,
@@ -69,10 +69,10 @@ Transaction  signers=[creator]
     │      timestamp:          1703283201
     ├── mpl_core::Burn [2] ✓ 9904cu
     └── Token::TransferChecked [2] ✓ 6174cu
-Compute Units (this run): 87361
+Compute Units (this run): 84361
 Legend (3):
   vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
-  creator           = 2sn4P2q4RXTWs67AHYRXStWvTW5Ghk8YFW5EAamKQG8T
+  creator           = C928zKSWpEZw4J2q4R46UHU1CMXxbbQPHEYAaNZWkH6a
   mpl_core          = CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d
 ```
 
@@ -80,10 +80,10 @@ Legend (3):
 ```console
 ── vesting_positions::Claim ────────────────────────────────
 Transaction  signers=[Alice]
-└── vesting_positions::Claim [1] ✗ 26397cu  signer=Alice
+└── vesting_positions::Claim [1] ✗ 18897cu  signer=Alice
     └── Error: ClaimWindowClosed
 Error: InstructionError(0, Custom(6025))
-Compute Units (this run): 26397
+Compute Units (this run): 18897
 Legend (2):
   vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
   Alice             = 4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P

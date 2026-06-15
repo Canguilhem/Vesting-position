@@ -25,7 +25,6 @@ fn vested_tokens_are_forfeited_past_the_grace_window() {
     let alice = load_whitelist_user(&merkle, WHITELISTED_1);
     fund_keypair(&mut world.ctx, &alice.keypair, LAMPORTS);
     world.ctx.alias(alice.keypair.pubkey(), "Alice");
-    world.ctx.alias(world.bundle.creator, "creator");
     world.ctx.alias(world.bundle.campaign, "Campaign");
 
     // --- Alice claims her cliff, then walks away -------------------------------

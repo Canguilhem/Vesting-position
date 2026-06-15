@@ -368,9 +368,16 @@ impl TestCampaign {
 
         ctx.svm.warp_to_timestamp(config.now);
 
-        let creator = ctx.svm.create_funded_account(LAMPORTS).unwrap();
-        let mint = ctx.svm.create_token_mint(&creator, 6).unwrap();
-        let bundle = VestingBundle::init(creator.pubkey(), mint.pubkey(), &tree.root);
+        // Cast the creator and mint as deterministic, aliased identities. Every
+        // PDA the program derives downstream (the collection, the campaign, each
+        // position asset) is seeded from these two keys, so pinning them pins the
+        // whole address space: the committed lifecycle report becomes a
+        // byte-reproducible regression snapshot instead of drifting each run.
+        // cast_* also aliases them, so reports read "creator"/"mint" with no
+        // per-test alias call.
+        let creator = ctx.cast_actor_with_sol("creator", LAMPORTS);
+        let mint = ctx.cast_mint("mint", &creator, 6);
+        let bundle = VestingBundle::init(creator.pubkey(), mint, &tree.root);
 
         ctx.svm
             .create_associated_token_account(&bundle.mint, &creator)
