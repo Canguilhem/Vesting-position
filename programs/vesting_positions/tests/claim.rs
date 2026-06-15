@@ -484,6 +484,10 @@ fn full_lifecycle() {
     world.ctx.alias(alice.keypair.pubkey(), "Alice");
     world.ctx.alias(bob.pubkey(), "Bob");
     world.ctx.alias(world.bundle.creator, "campaign creator");
+    // Name the campaign PDA too: it's the `campaign:` field every decoded event
+    // carries, so without this it leaks raw (run-varying) base58 into the report
+    // and the snapshot stops being byte-reproducible.
+    world.ctx.alias(world.bundle.campaign, "Campaign");
     world.ctx.alias(vesting_positions::ID, "vesting_positions");
     world.ctx.alias(mpl_core::ID, "mpl_core");
 
