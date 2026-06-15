@@ -428,10 +428,17 @@ impl TestCampaign {
 }
 
 pub fn build_ctx() -> anchor_litesvm::AnchorContext {
-    AnchorLiteSVM::build_with_programs(&[
+    let mut ctx = AnchorLiteSVM::build_with_programs(&[
         (vesting_positions::ID, "vesting_positions", PROGRAM_BYTES),
         (mpl_core::ID, "mpl_core", MPL_CORE_BYTES),
-    ])
+    ]);
+    // Decode every one of this program's events in the structured views
+    // (mermaid notes + tree lines) straight from the IDL, instead of rendering
+    // them as raw base64. No per-event list to maintain.
+    ctx.register_events_from_idl(include_str!(
+        "../../../../target/idl/vesting_positions.json"
+    ));
+    ctx
 }
 
 /// Default merkle fixture + initialized campaign.

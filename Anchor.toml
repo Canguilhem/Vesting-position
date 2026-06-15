@@ -5,14 +5,11 @@ package_manager = "yarn"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-vesting_positions = "4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3"
-
 [programs.devnet]
 vesting_positions = "4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3"
 
-[registry]
-url = "https://api.apr.dev"
+[programs.localnet]
+vesting_positions = "7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1"
 
 [provider]
 cluster = "localnet"
@@ -20,3 +17,5 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[hooks]
