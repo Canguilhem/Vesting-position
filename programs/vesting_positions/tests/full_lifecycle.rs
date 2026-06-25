@@ -574,8 +574,8 @@ fn full_lifecycle() {
 
     md.check(
         "increment matches charlie allocation math",
-        alice_on_charlie_expected,
-        alice_increment,
+        format_tokens(alice_on_charlie_expected),
+        format_tokens(alice_increment),
     );
     let alice_own_expected_at_ninety =
         world.expected_claimable(ninety, alice.allocation, alice_claimed);
@@ -585,12 +585,12 @@ fn full_lifecycle() {
         alice_increment != alice_own_expected_at_ninety,
     );
     md.check(
-        "charlie position nft owner is alice",
+        "charlie's position owner is alice",
         alice.keypair.pubkey(),
         world.asset_owner(&charlie_vesting_position),
     );
     md.check(
-        "alice still owns her original position via bob",
+        "Alice's original position owner is bob",
         bob.pubkey(),
         world.asset_owner(&alice_vesting_position),
     );
