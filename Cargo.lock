@@ -244,7 +244,7 @@ dependencies = [
 [[package]]
 name = "anchor-litesvm"
 version = "0.4.0-anchor-0.31"
-source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#b1d89e5fdcdc7da7626a020d3533e81b5fe99ac8"
+source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#fa73d2af390f4bb910841ea0af176c101ff63a23"
 dependencies = [
  "anchor-lang",
  "anchor-litesvm-derive",
@@ -252,6 +252,7 @@ dependencies = [
  "borsh 1.6.1",
  "litesvm",
  "litesvm-utils",
+ "serde_json",
  "sha2 0.10.9",
  "solana-program",
  "solana-sdk",
@@ -263,7 +264,7 @@ dependencies = [
 [[package]]
 name = "anchor-litesvm-derive"
 version = "0.4.0-anchor-0.31"
-source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#b1d89e5fdcdc7da7626a020d3533e81b5fe99ac8"
+source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#fa73d2af390f4bb910841ea0af176c101ff63a23"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1927,8 +1928,9 @@ dependencies = [
 [[package]]
 name = "litesvm-utils"
 version = "0.4.0-anchor-0.31"
-source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#b1d89e5fdcdc7da7626a020d3533e81b5fe99ac8"
+source = "git+https://github.com/cds-rs/anchor-litesvm?branch=compat%2Fanchor-0.31#fa73d2af390f4bb910841ea0af176c101ff63a23"
 dependencies = [
+ "base64 0.22.1",
  "indexmap",
  "litesvm",
  "solana-message",

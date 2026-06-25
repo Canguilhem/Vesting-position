@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[event]
+#[derive(Debug)]
 pub struct ClaimEvent {
     pub campaign: Pubkey,
     pub asset: Pubkey,
@@ -12,6 +13,7 @@ pub struct ClaimEvent {
 }
 
 #[event]
+#[derive(Debug)]
 pub struct ClawbackEvent {
     pub campaign: Pubkey,
     pub asset: Pubkey,
@@ -22,6 +24,7 @@ pub struct ClawbackEvent {
 }
 
 #[event]
+#[derive(Debug)]
 pub struct InitializeEvent {
     pub campaign: Pubkey,
     pub collection: Pubkey,
@@ -38,6 +41,7 @@ pub struct InitializeEvent {
 
 /// both `freeze_collection` & `freeze_asset`
 #[event]
+#[derive(Debug)]
 pub struct FreezeEvent {
     pub campaign: Pubkey,
     pub target: Pubkey,
@@ -46,6 +50,7 @@ pub struct FreezeEvent {
 }
 
 #[event]
+#[derive(Debug)]
 pub struct CancelEvent {
     pub campaign: Pubkey,
     pub collection: Pubkey,
@@ -55,6 +60,7 @@ pub struct CancelEvent {
 }
 
 #[event]
+#[derive(Debug)]
 pub struct CloseEvent {
     pub campaign: Pubkey,
     pub collection: Pubkey,

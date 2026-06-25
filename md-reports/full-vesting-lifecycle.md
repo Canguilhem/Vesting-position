@@ -6,7 +6,7 @@
 
 | field | value |
 |---|---|
-| campaign creator | B7qeUALaJSAwpZS3vfu7RcDj3iSuJSxvoicePDWftXCx |
+| campaign creator | C928zKSWpEZw4J2q4R46UHU1CMXxbbQPHEYAaNZWkH6a |
 | alice | 4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P |
 | bob | ErV63ApqLgh1Je5PdiVj6kzwkKJmLjKV41QoN9U4BNag |
 
@@ -52,8 +52,8 @@
 
 | field | value |
 |---|---|
-| Position NFT (minted by Alice) | AYeDE4VXs4HwbeGZZ5ce7AdRaqTxRLw9A3LYdo16Evcm |
-| NFT Collection for this campaign | 2aLMEW6dv6VptyzbAmJrRBycQFVXjTdaWW7e3dRhYEeo |
+| Position NFT (minted by Alice) | 7W2LYmN6FNwAEy8aAAgWfsGCMBeu9iRtezrPyHHgspaU |
+| NFT Collection for this campaign | GM6DrZdkGwrURobkLSMsH9kNWSwihEmqD1ca6cPiMcHD |
 
 **first claim**
 
@@ -124,7 +124,7 @@ Alice replays merkle proofs after transferring the NFT; the claim receipt blocks
 |---|---|
 | claimant | Bob |
 | whitelisted | false |
-| asset | AYeDE4VXs4HwbeGZZ5ce7AdRaqTxRLw9A3LYdo16Evcm |
+| asset | 7W2LYmN6FNwAEy8aAAgWfsGCMBeu9iRtezrPyHHgspaU |
 | auth | NFT ownership only (no merkle proofs) |
 | linear % | 75 |
 | timestamp (unix) | 1702052000 |
@@ -143,7 +143,15 @@ Bob was never whitelisted; NFT ownership alone authorizes the subsequent claim
 ```console
 Transaction  signers=[Alice]
 ├── ComputeBudget [1] ✓ (no cu)
-└── vesting_positions::Claim [1] ✓ 179417cu  signer=Alice
+└── vesting_positions::Claim [1] ✓ 177917cu  signer=Alice
+    │ 🔔 ClaimEvent
+    │      campaign:           Campaign,
+    │      asset:              Position NFT (minted by Alice),
+    │      claimant:           Alice,
+    │      original_recipient: Alice,
+    │      amount:             100000000000,
+    │      claimed_so_far:     100000000000,
+    │      timestamp:          1700172800
     ├── AssociatedToken::Create [2] ✓ 20389cu
     │   ├── Token::GetAccountDataSize [3] ✓ 1595cu
     │   ├── System::CreateAccount [3] ✓ (no cu)
@@ -157,10 +165,10 @@ Transaction  signers=[Alice]
     │   ├── System::Transfer [3] ✓ (no cu)
     │   └── System::Transfer [3] ✓ (no cu)
     └── Token::TransferChecked [2] ✓ 6174cu
-Compute Units (this run): 179567
+Compute Units (this run): 178067
 Legend (3):
   Alice             = 4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P
-  vesting_positions = 4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3
+  vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
   mpl_core          = CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d
 ```
 
@@ -168,12 +176,20 @@ Legend (3):
 ```console
 ── vesting_positions::Claim ────────────────────────────────
 Transaction  signers=[Alice]
-└── vesting_positions::Claim [1] ✓ 82489cu  signer=Alice
+└── vesting_positions::Claim [1] ✓ 80989cu  signer=Alice
+    │ 🔔 ClaimEvent
+    │      campaign:           Campaign,
+    │      asset:              Position NFT (minted by Alice),
+    │      claimant:           Alice,
+    │      original_recipient: Alice,
+    │      amount:             450000000000,
+    │      claimed_so_far:     550000000000,
+    │      timestamp:          1701425600
     ├── mpl_core::UpdatePlugin [2] ✓ 20791cu
     └── Token::TransferChecked [2] ✓ 6174cu
-Compute Units (this run): 82489
+Compute Units (this run): 80989
 Legend (3):
-  vesting_positions = 4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3
+  vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
   Alice             = 4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P
   mpl_core          = CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d
 ```
@@ -182,12 +198,12 @@ Legend (3):
 ```console
 ── vesting_positions::Claim ────────────────────────────────
 Transaction  signers=[Alice]
-└── vesting_positions::Claim [1] ✗ 20567cu  signer=Alice
+└── vesting_positions::Claim [1] ✗ 19067cu  signer=Alice
     └── Error: AlreadyClaimed
 Error: InstructionError(0, Custom(6012))
-Compute Units (this run): 20567
+Compute Units (this run): 19067
 Legend (2):
-  vesting_positions = 4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3
+  vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
   Alice             = 4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P
 ```
 
@@ -195,8 +211,16 @@ Legend (2):
 ```console
 ── vesting_positions::Claim ────────────────────────────────
 Transaction  signers=[Bob]
-└── vesting_positions::Claim [1] ✓ 110271cu  signer=Bob
-    ├── AssociatedToken::Create [2] ✓ 20389cu
+└── vesting_positions::Claim [1] ✓ 126771cu  signer=Bob
+    │ 🔔 ClaimEvent
+    │      campaign:           Campaign,
+    │      asset:              Position NFT (minted by Alice),
+    │      claimant:           Bob,
+    │      original_recipient: Alice,
+    │      amount:             225000000000,
+    │      claimed_so_far:     775000000000,
+    │      timestamp:          1702052000
+    ├── AssociatedToken::Create [2] ✓ 26389cu
     │   ├── Token::GetAccountDataSize [3] ✓ 1595cu
     │   ├── System::CreateAccount [3] ✓ (no cu)
     │   ├── Token::InitializeImmutableOwner [3] ✓ 1405cu
@@ -204,9 +228,9 @@ Transaction  signers=[Bob]
     ├── System::CreateAccount [2] ✓ (no cu)
     ├── mpl_core::UpdatePlugin [2] ✓ 20791cu
     └── Token::TransferChecked [2] ✓ 6174cu
-Compute Units (this run): 110271
+Compute Units (this run): 126771
 Legend (3):
-  vesting_positions = 4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3
+  vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
   Bob               = ErV63ApqLgh1Je5PdiVj6kzwkKJmLjKV41QoN9U4BNag
   mpl_core          = CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d
 ```
@@ -239,7 +263,7 @@ sequenceDiagram
     mpl_core ->> System: Transfer
     mpl_core ->> System: Transfer
     vesting_positions ->> Token: TransferChecked
-    vesting_positions -->> Alice: 🔔 event: XQ9GqjCM1NvgUwSAYRG5bU+k/PdKBvuDvttIuBR+KlRmPssWwMBNqI3UQwQJ…
+    note over vesting_positions: 🔔 ClaimEvent { campaign: Campaign, asset: Position NFT (mint…
 ```
 
 **Act 2 — alice subsequent claim — CPI sequence**
@@ -254,7 +278,7 @@ sequenceDiagram
     Alice ->> vesting_positions: Claim
     vesting_positions ->> mpl_core: UpdatePlugin
     vesting_positions ->> Token: TransferChecked
-    vesting_positions -->> Alice: 🔔 event: XQ9GqjCM1NvgUwSAYRG5bU+k/PdKBvuDvttIuBR+KlRmPssWwMBNqI3UQwQJ…
+    note over vesting_positions: 🔔 ClaimEvent { campaign: Campaign, asset: Position NFT (mint…
 ```
 
 **Act 3 — merkle replay rejected — CPI sequence**
@@ -288,5 +312,5 @@ sequenceDiagram
     vesting_positions ->> System: CreateAccount
     vesting_positions ->> mpl_core: UpdatePlugin
     vesting_positions ->> Token: TransferChecked
-    vesting_positions -->> Bob: 🔔 event: XQ9GqjCM1NvgUwSAYRG5bU+k/PdKBvuDvttIuBR+KlRmPssWwMBNqI3UQwQJ…
+    note over vesting_positions: 🔔 ClaimEvent { campaign: Campaign, asset: Position NFT (mint…
 ```
