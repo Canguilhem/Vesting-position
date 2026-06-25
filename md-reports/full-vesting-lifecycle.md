@@ -83,7 +83,7 @@
 
 | Observation | Before | After | What it means |
 |---|---|---|---|
-| Alice's position ownership | `4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P` | `ErV63ApqLgh1Je5PdiVj6kzwkKJmLjKV41QoN9U4BNag` | Bob is now the owner of alice's vesting position |
+| Alice's position ownership | `"Alice pubkey"` | `"Bob pubkey"` | Bob is now the owner of alice's vesting position |
 
 ### Alice replays merkle proofs after transferring the NFT
 

@@ -195,9 +195,9 @@ fn full_lifecycle() {
     
     md.transition(
         "Alice's position ownership",
-        owner_before_transfer, 
-        bob.pubkey(), 
-        owner_after_transfer, 
+        world.ctx.label(&owner_before_transfer) , 
+        world.ctx.label(&bob.pubkey()), 
+        world.ctx.label(&owner_after_transfer), 
         "Bob is now the owner of alice's vesting position"
     );
 
