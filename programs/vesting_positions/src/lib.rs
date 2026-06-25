@@ -18,7 +18,7 @@ pub use instructions::*;
 pub use state::*;
 pub use utils::*;
 
-declare_id!("7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1");
+declare_id!("4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3");
 
 #[program]
 pub mod vesting_positions {

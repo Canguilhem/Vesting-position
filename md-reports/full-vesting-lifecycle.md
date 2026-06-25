@@ -6,7 +6,7 @@
 
 | field | value |
 |---|---|
-| campaign creator | C928zKSWpEZw4J2q4R46UHU1CMXxbbQPHEYAaNZWkH6a |
+| campaign creator | BUTN6L99gZasTEZ8onMJCC1NkoxXkpfoZU7EkcgWFyJw |
 | alice | 4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P |
 | bob | ErV63ApqLgh1Je5PdiVj6kzwkKJmLjKV41QoN9U4BNag |
 
@@ -52,8 +52,8 @@
 
 | field | value |
 |---|---|
-| Position NFT (minted by Alice) | 7W2LYmN6FNwAEy8aAAgWfsGCMBeu9iRtezrPyHHgspaU |
-| NFT Collection for this campaign | GM6DrZdkGwrURobkLSMsH9kNWSwihEmqD1ca6cPiMcHD |
+| Position NFT (minted by Alice) | 993tWnLHDL7DHApupk2U5cZbjznbX3udkHFKsGHu5uJ5 |
+| NFT Collection for this campaign | 6nUiVzrpjwKJJ99KW4vMwjsGK3SoMQuWXFD3hcMKzQw6 |
 
 **first claim**
 
@@ -124,7 +124,7 @@ Alice replays merkle proofs after transferring the NFT; the claim receipt blocks
 |---|---|
 | claimant | Bob |
 | whitelisted | false |
-| asset | 7W2LYmN6FNwAEy8aAAgWfsGCMBeu9iRtezrPyHHgspaU |
+| asset | 993tWnLHDL7DHApupk2U5cZbjznbX3udkHFKsGHu5uJ5 |
 | auth | NFT ownership only (no merkle proofs) |
 | linear % | 75 |
 | timestamp (unix) | 1702052000 |
@@ -143,7 +143,7 @@ Bob was never whitelisted; NFT ownership alone authorizes the subsequent claim
 ```console
 Transaction  signers=[Alice]
 ├── ComputeBudget [1] ✓ (no cu)
-└── vesting_positions::Claim [1] ✓ 177917cu  signer=Alice
+└── vesting_positions::Claim [1] ✓ 180917cu  signer=Alice
     │ 🔔 ClaimEvent
     │      campaign:           Campaign,
     │      asset:              Position NFT (minted by Alice),
@@ -165,10 +165,10 @@ Transaction  signers=[Alice]
     │   ├── System::Transfer [3] ✓ (no cu)
     │   └── System::Transfer [3] ✓ (no cu)
     └── Token::TransferChecked [2] ✓ 6174cu
-Compute Units (this run): 178067
+Compute Units (this run): 181067
 Legend (3):
   Alice             = 4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P
-  vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
+  vesting_positions = 4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3
   mpl_core          = CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d
 ```
 
@@ -176,7 +176,7 @@ Legend (3):
 ```console
 ── vesting_positions::Claim ────────────────────────────────
 Transaction  signers=[Alice]
-└── vesting_positions::Claim [1] ✓ 80989cu  signer=Alice
+└── vesting_positions::Claim [1] ✓ 83989cu  signer=Alice
     │ 🔔 ClaimEvent
     │      campaign:           Campaign,
     │      asset:              Position NFT (minted by Alice),
@@ -187,9 +187,9 @@ Transaction  signers=[Alice]
     │      timestamp:          1701425600
     ├── mpl_core::UpdatePlugin [2] ✓ 20791cu
     └── Token::TransferChecked [2] ✓ 6174cu
-Compute Units (this run): 80989
+Compute Units (this run): 83989
 Legend (3):
-  vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
+  vesting_positions = 4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3
   Alice             = 4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P
   mpl_core          = CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d
 ```
@@ -198,12 +198,12 @@ Legend (3):
 ```console
 ── vesting_positions::Claim ────────────────────────────────
 Transaction  signers=[Alice]
-└── vesting_positions::Claim [1] ✗ 19067cu  signer=Alice
+└── vesting_positions::Claim [1] ✗ 22067cu  signer=Alice
     └── Error: AlreadyClaimed
 Error: InstructionError(0, Custom(6012))
-Compute Units (this run): 19067
+Compute Units (this run): 22067
 Legend (2):
-  vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
+  vesting_positions = 4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3
   Alice             = 4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P
 ```
 
@@ -211,7 +211,7 @@ Legend (2):
 ```console
 ── vesting_positions::Claim ────────────────────────────────
 Transaction  signers=[Bob]
-└── vesting_positions::Claim [1] ✓ 126771cu  signer=Bob
+└── vesting_positions::Claim [1] ✓ 114771cu  signer=Bob
     │ 🔔 ClaimEvent
     │      campaign:           Campaign,
     │      asset:              Position NFT (minted by Alice),
@@ -220,7 +220,7 @@ Transaction  signers=[Bob]
     │      amount:             225000000000,
     │      claimed_so_far:     775000000000,
     │      timestamp:          1702052000
-    ├── AssociatedToken::Create [2] ✓ 26389cu
+    ├── AssociatedToken::Create [2] ✓ 21889cu
     │   ├── Token::GetAccountDataSize [3] ✓ 1595cu
     │   ├── System::CreateAccount [3] ✓ (no cu)
     │   ├── Token::InitializeImmutableOwner [3] ✓ 1405cu
@@ -228,9 +228,9 @@ Transaction  signers=[Bob]
     ├── System::CreateAccount [2] ✓ (no cu)
     ├── mpl_core::UpdatePlugin [2] ✓ 20791cu
     └── Token::TransferChecked [2] ✓ 6174cu
-Compute Units (this run): 126771
+Compute Units (this run): 114771
 Legend (3):
-  vesting_positions = 7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1
+  vesting_positions = 4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3
   Bob               = ErV63ApqLgh1Je5PdiVj6kzwkKJmLjKV41QoN9U4BNag
   mpl_core          = CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d
 ```
