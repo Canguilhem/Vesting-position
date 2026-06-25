@@ -12,7 +12,7 @@ mod common;
 use anchor_litesvm::{Report, Signer};
 use vesting_positions::instruction;
 
-use common::{fund_keypair, load_whitelist_user, setup, LAMPORTS, WHITELISTED_1};
+use common::{format_tokens, fund_keypair, load_whitelist_user, setup, LAMPORTS, WHITELISTED_1};
 
 #[test]
 fn vested_tokens_are_forfeited_past_the_grace_window() {
@@ -38,9 +38,9 @@ fn vested_tokens_are_forfeited_past_the_grace_window() {
     let expected_cliff = world.expected_claimable(world.cliff_end(), alice.allocation, 0);
     md.transition(
         "Alice's token balance, after the cliff claim",
-        0u64,
-        expected_cliff,
-        cliff,
+        format_tokens(0),
+        format_tokens(expected_cliff),
+        format_tokens(cliff),
         "the cliff unlock reached her",
     );
 
@@ -58,6 +58,10 @@ fn vested_tokens_are_forfeited_past_the_grace_window() {
         alice.allocation - cliff,
         owed,
     );
+    md.note(format!(
+        "Unclaimed remainder at end: {}",
+        format_tokens(owed)
+    ));
 
     // --- The grace window lapses; the creator claws back ----------------------
     md.step("The grace window lapses, and the creator claws back");
@@ -98,16 +102,16 @@ fn vested_tokens_are_forfeited_past_the_grace_window() {
     let alice_final = world.claimer_token_balance(&alice.keypair.pubkey());
     md.transition(
         "Alice's token balance, across the clawback",
-        cliff,
-        cliff,
-        alice_final,
+        format_tokens(cliff),
+        format_tokens(cliff),
+        format_tokens(alice_final),
         "her vested remainder was forfeited, never delivered",
     );
     md.transition(
         "tokens the creator recovered",
-        0u64,
-        owed,
-        recovered,
+        format_tokens(0),
+        format_tokens(owed),
+        format_tokens(recovered),
         "the grace window let the creator reclaim fully-vested tokens",
     );
     md.note(

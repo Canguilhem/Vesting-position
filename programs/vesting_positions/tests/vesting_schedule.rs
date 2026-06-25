@@ -3,7 +3,7 @@ mod common;
 use anchor_litesvm::{AssertionHelpers, MarkdownBlock, Report, Signer};
 use vesting_positions::instruction;
 
-use common::{fund_keypair, load_whitelist_user, setup, CampaignConfig, LAMPORTS, WHITELISTED_1};
+use common::{format_tokens, fund_keypair, load_whitelist_user, setup, CampaignConfig, LAMPORTS, WHITELISTED_1};
 
 /// Percentages through the linear vesting window (0 = at cliff_end, 100 = at end).
 const LINEAR_CHECKPOINTS: &[u64] = &[0, 1, 7, 13, 20, 33, 45, 50, 57, 67, 75, 83, 91, 99, 100];
@@ -231,15 +231,15 @@ fn claims_at_linear_checkpoints() {
         let expected = world.expected_claimable(now, alice.allocation, 0);
         md.check(
             format!("cumulative at {pct}% linear"),
-            expected,
-            cumulative,
+            format_tokens(expected),
+            format_tokens(cumulative),
         );
         table_rows.push(vec![
             pct.to_string(),
             now.to_string(),
-            incremental.to_string(),
-            cumulative.to_string(),
-            expected.to_string(),
+            format_tokens(incremental),
+            format_tokens(cumulative),
+            format_tokens(expected),
         ]);
     }
 
@@ -258,7 +258,7 @@ fn claims_at_linear_checkpoints() {
     );
     md.check(
         "full allocation released at end",
-        alice.allocation,
-        world.claimer_token_balance(&alice.keypair.pubkey()),
+        format_tokens(alice.allocation),
+        format_tokens(world.claimer_token_balance(&alice.keypair.pubkey())),
     );
 }

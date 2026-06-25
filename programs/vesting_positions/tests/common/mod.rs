@@ -1,6 +1,8 @@
 #[allow(dead_code)]
 pub mod campaign;
 #[allow(dead_code)]
+pub mod format;
+#[allow(dead_code)]
 pub mod keypair;
 #[allow(dead_code)]
 pub mod merkle;
@@ -9,6 +11,8 @@ pub mod merkle;
 // it, so a glob re-export is "unused" in whichever binaries don't touch it.
 #[allow(unused_imports)]
 pub use campaign::*;
+#[allow(unused_imports)]
+pub use format::*;
 #[allow(unused_imports)]
 pub use keypair::*;
 #[allow(unused_imports)]

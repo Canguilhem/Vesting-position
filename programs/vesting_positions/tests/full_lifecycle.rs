@@ -16,8 +16,8 @@ use mpl_core;
 use vesting_positions::{instruction, Campaign};
 
 use common::{
-    assert_receipt_set, fund_keypair, load_keypair, load_whitelist_user, setup, CampaignConfig,
-    LAMPORTS, NOT_WHITELISTED, WHITELISTED_1, WHITELISTED_2, TOTAL_DEPOSIT,
+    assert_receipt_set, format_tokens, fund_keypair, load_keypair, load_whitelist_user, setup,
+    CampaignConfig, LAMPORTS, NOT_WHITELISTED, WHITELISTED_1, WHITELISTED_2, TOTAL_DEPOSIT,
 };
 
 #[test]
@@ -92,7 +92,7 @@ fn full_lifecycle() {
         "grace period (sec)"   => campaign.grace_period,
         "cliff duration (sec)" => campaign.cliff_duration,
         "cliff release (bps)"  => campaign.cliff_release_bps,
-        "total deposit"        => campaign.total_deposit,
+        "total deposit"        => format_tokens(campaign.total_deposit),
         "transferable"         => campaign.is_transferable,
     });
 
@@ -126,9 +126,9 @@ fn full_lifecycle() {
 
     md.transition(
         "Alice's token balance, after the cliff claim",
-        0u64,
-        expected_cliff,
-        alice_balance_after_cliff,
+        format_tokens(0),
+        format_tokens(expected_cliff),
+        format_tokens(alice_balance_after_cliff),
         format!("Alice received {}% of her allocation", campaign.cliff_release_bps / 100),
     );
 
@@ -156,8 +156,8 @@ fn full_lifecycle() {
         "asset"               => world.ctx.label(&alice_vesting_position),
         "linear %"            => 50,
         "timestamp (unix)"    => mid,
-        "balance before"      => balance_before,
-        "incremental release" => expected_mid,
+        "balance before"      => format_tokens(balance_before),
+        "incremental release" => format_tokens(expected_mid),
     });
 
     let alice_claim_bundle = world
@@ -182,9 +182,9 @@ fn full_lifecycle() {
 
     md.transition(
         "Alice balance after second claim at 50% elapsed time",
-        balance_before,
-        balance_before + expected_mid,
-        world.claimer_token_balance(&alice.keypair.pubkey()),
+        format_tokens(balance_before),
+        format_tokens(balance_before + expected_mid),
+        format_tokens(world.claimer_token_balance(&alice.keypair.pubkey())),
         "Alice received the expected amount for 50% elapsed time",
     );
 
@@ -197,7 +197,7 @@ fn full_lifecycle() {
         "claimant"         => world.ctx.label(&charlie.keypair.pubkey()),
         "auth"             => "merkle proofs + allocation",
         "asset"            => world.ctx.label(&charlie_vesting_position),
-        "allocation"       => charlie.allocation,
+        "allocation"       => format_tokens(charlie.allocation),
         "timestamp (unix)" => mid,
     });
 
@@ -215,9 +215,9 @@ fn full_lifecycle() {
 
     md.transition(
         "Charlie's token balance after first claim",
-        0u64,
-        expected_charlie_first,
-        charlie_balance_after_first,
+        format_tokens(0),
+        format_tokens(expected_charlie_first),
+        format_tokens(charlie_balance_after_first),
         "Charlie received cliff + linear vesting through 50% of the window",
     );
 
@@ -353,8 +353,8 @@ fn full_lifecycle() {
         "auth"             => "NFT ownership only (no merkle proofs)",
         "linear %"         => 75,
         "timestamp (unix)" => later,
-        "claimed so far"   => alice_claimed,
-        "expected release" => bob_expected,
+        "claimed so far"   => format_tokens(alice_claimed),
+        "expected release" => format_tokens(bob_expected),
     });
 
     md.note(
@@ -382,9 +382,9 @@ fn full_lifecycle() {
 
     md.transition(
         "Bob's token balance after claiming with Alice's position",
-        0u64,
-        bob_expected,
-        world.claimer_token_balance(&bob.pubkey()),
+        format_tokens(0),
+        format_tokens(bob_expected),
+        format_tokens(world.claimer_token_balance(&bob.pubkey())),
         "Bob claims vested tokens from Alice's allocation because he owns her position",
     );
 
@@ -407,8 +407,8 @@ fn full_lifecycle() {
         "auth"                => "position NFT (no proofs)",
         "linear %"            => 75,
         "timestamp (unix)"    => later,
-        "balance before"      => charlie_balance_before_sub,
-        "incremental release" => charlie_sub_expected,
+        "balance before"      => format_tokens(charlie_balance_before_sub),
+        "incremental release" => format_tokens(charlie_sub_expected),
     });
 
     let charlie_sub_bundle = world
@@ -434,9 +434,9 @@ fn full_lifecycle() {
     let charlie_claimed_so_far = world.claimer_token_balance(&charlie.keypair.pubkey());
     md.transition(
         "Charlie's token balance after partial claim",
-        charlie_balance_before_sub,
-        charlie_balance_before_sub + charlie_sub_expected,
-        charlie_claimed_so_far,
+        format_tokens(charlie_balance_before_sub),
+        format_tokens(charlie_balance_before_sub + charlie_sub_expected),
+        format_tokens(charlie_claimed_so_far),
         "Charlie claimed more vested tokens before transferring the NFT",
     );
 
@@ -447,7 +447,7 @@ fn full_lifecycle() {
         "to"                    => world.ctx.label(&alice.keypair.pubkey()),
         "recipient whitelisted" => true,
         "asset"                 => world.ctx.label(&charlie_vesting_position),
-        "allocation on nft"     => charlie.allocation,
+        "allocation on nft"     => format_tokens(charlie.allocation),
     });
     md.note(
         "Asset PDA and original_recipient stay bound to Charlie; only mpl-core owner changes",
@@ -527,12 +527,12 @@ fn full_lifecycle() {
         "whitelisted for own leaf" => true,
         "asset"                 => world.ctx.label(&charlie_vesting_position),
         "auth"                  => "NFT ownership (Charlie's position, not Alice's leaf)",
-        "allocation on nft"     => charlie.allocation,
-        "alice own allocation"  => alice.allocation,
+        "allocation on nft"     => format_tokens(charlie.allocation),
+        "alice own allocation"  => format_tokens(alice.allocation),
         "linear %"              => 90,
         "timestamp (unix)"    => ninety,
-        "charlie claimed so far"=> charlie_claimed_so_far,
-        "expected release"      => alice_on_charlie_expected,
+        "charlie claimed so far"=> format_tokens(charlie_claimed_so_far),
+        "expected release"      => format_tokens(alice_on_charlie_expected),
     });
 
     md.note(
@@ -566,9 +566,9 @@ fn full_lifecycle() {
 
     md.transition(
         "Alice token balance increment from Charlie's position",
-        alice_balance_before_charlie_claim,
-        alice_balance_before_charlie_claim + alice_on_charlie_expected,
-        alice_balance_after_charlie_claim,
+        format_tokens(alice_balance_before_charlie_claim),
+        format_tokens(alice_balance_before_charlie_claim + alice_on_charlie_expected),
+        format_tokens(alice_balance_after_charlie_claim),
         "Alice received Charlie's vested tokens, not a replay of her own allocation",
     );
 

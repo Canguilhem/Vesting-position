@@ -34,7 +34,7 @@
 | grace period (sec) | 604800 |
 | cliff duration (sec) | 86400 |
 | cliff release (bps) | 1000 |
-| total deposit | 10000000000000 |
+| total deposit | 10,000,000 |
 | transferable | true |
 
 ### Alice first claim
@@ -51,7 +51,7 @@
 
 | Observation | Before | After | What it means |
 |---|---|---|---|
-| Alice's token balance, after the cliff claim | `0` | `100000000000` | Alice received 10% of her allocation |
+| Alice's token balance, after the cliff claim | `"0"` | `"100,000"` | Alice received 10% of her allocation |
 
 - [x] alice position nft exists: `true`
 - [x] alice position nft owner is alice: `4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P`
@@ -67,12 +67,12 @@
 | asset | Alice position NFT |
 | linear % | 50 |
 | timestamp (unix) | 1701425600 |
-| balance before | 100000000000 |
-| incremental release | 450000000000 |
+| balance before | 100,000 |
+| incremental release | 450,000 |
 
 | Observation | Before | After | What it means |
 |---|---|---|---|
-| Alice balance after second claim at 50% elapsed time | `100000000000` | `550000000000` | Alice received the expected amount for 50% elapsed time |
+| Alice balance after second claim at 50% elapsed time | `"100,000"` | `"550,000"` | Alice received the expected amount for 50% elapsed time |
 
 ### Charlie first claim at 50% elapsed
 
@@ -85,12 +85,12 @@ Charlie opens a separate position with his own merkle leaf and allocation
 | claimant | Charlie pubkey |
 | auth | merkle proofs + allocation |
 | asset | Charlie position NFT |
-| allocation | 2000000000000 |
+| allocation | 2,000,000 |
 | timestamp (unix) | 1701425600 |
 
 | Observation | Before | After | What it means |
 |---|---|---|---|
-| Charlie's token balance after first claim | `0` | `1100000000000` | Charlie received cliff + linear vesting through 50% of the window |
+| Charlie's token balance after first claim | `"0"` | `"1,100,000"` | Charlie received cliff + linear vesting through 50% of the window |
 
 - [x] charlie position nft exists: `true`
 - [x] charlie position nft owner is charlie: `H87xi4CUqrUPXzppV3jotTmre6DyR5pCaMk5bKQQBFTg`
@@ -152,14 +152,14 @@ Former owners cannot claim via their old receipt or whitelist status — NFT own
 | auth | NFT ownership only (no merkle proofs) |
 | linear % | 75 |
 | timestamp (unix) | 1702052000 |
-| claimed so far | 550000000000 |
-| expected release | 225000000000 |
+| claimed so far | 550,000 |
+| expected release | 225,000 |
 
 Bob was never whitelisted; NFT ownership alone authorizes the subsequent claim
 
 | Observation | Before | After | What it means |
 |---|---|---|---|
-| Bob's token balance after claiming with Alice's position | `0` | `225000000000` | Bob claims vested tokens from Alice's allocation because he owns her position |
+| Bob's token balance after claiming with Alice's position | `"0"` | `"225,000"` | Bob claims vested tokens from Alice's allocation because he owns her position |
 
 - [x] alice position nft owner is still bob: `ErV63ApqLgh1Je5PdiVj6kzwkKJmLjKV41QoN9U4BNag`
 
@@ -174,12 +174,12 @@ Bob was never whitelisted; NFT ownership alone authorizes the subsequent claim
 | auth | position NFT (no proofs) |
 | linear % | 75 |
 | timestamp (unix) | 1702052000 |
-| balance before | 1100000000000 |
-| incremental release | 450000000000 |
+| balance before | 1,100,000 |
+| incremental release | 450,000 |
 
 | Observation | Before | After | What it means |
 |---|---|---|---|
-| Charlie's token balance after partial claim | `1100000000000` | `1550000000000` | Charlie claimed more vested tokens before transferring the NFT |
+| Charlie's token balance after partial claim | `"1,100,000"` | `"1,550,000"` | Charlie claimed more vested tokens before transferring the NFT |
 
 ### Charlie transfers position to Alice
 
@@ -191,7 +191,7 @@ Bob was never whitelisted; NFT ownership alone authorizes the subsequent claim
 | to | Alice pubkey |
 | recipient whitelisted | true |
 | asset | Charlie position NFT |
-| allocation on nft | 2000000000000 |
+| allocation on nft | 2,000,000 |
 
 Asset PDA and original_recipient stay bound to Charlie; only mpl-core owner changes
 
@@ -223,18 +223,18 @@ Asset PDA and original_recipient stay bound to Charlie; only mpl-core owner chan
 | whitelisted for own leaf | true |
 | asset | Charlie position NFT |
 | auth | NFT ownership (Charlie's position, not Alice's leaf) |
-| allocation on nft | 2000000000000 |
-| alice own allocation | 1000000000000 |
+| allocation on nft | 2,000,000 |
+| alice own allocation | 1,000,000 |
 | linear % | 90 |
 | timestamp (unix) | 1702427840 |
-| charlie claimed so far | 1550000000000 |
-| expected release | 270000000000 |
+| charlie claimed so far | 1,550,000 |
+| expected release | 270,000 |
 
 Alice is whitelisted for her own leaf, but this claim uses Charlie's allocation stored on his NFT — not Alice's merkle proofs
 
 | Observation | Before | After | What it means |
 |---|---|---|---|
-| Alice token balance increment from Charlie's position | `550000000000` | `820000000000` | Alice received Charlie's vested tokens, not a replay of her own allocation |
+| Alice token balance increment from Charlie's position | `"550,000"` | `"820,000"` | Alice received Charlie's vested tokens, not a replay of her own allocation |
 
 - [x] increment matches charlie allocation math: `270000000000`
 - [x] increment uses charlie allocation not alice own leaf: `true`

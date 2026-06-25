@@ -6,7 +6,7 @@
 
 | Observation | Before | After | What it means |
 |---|---|---|---|
-| Alice's token balance, after the cliff claim | `0` | `100000000000` | the cliff unlock reached her |
+| Alice's token balance, after the cliff claim | `"0"` | `"100,000"` | the cliff unlock reached her |
 
 ### Campaign end: Alice is fully vested
 
@@ -14,12 +14,14 @@ By campaign end every token has vested. Alice is *entitled* to the whole remaini
 
 - [x] Alice's vested-but-unclaimed remainder (tokens): `900000000000`
 
+Unclaimed remainder at end: 900,000
+
 ### The grace window lapses, and the creator claws back
 
 | Observation | Before | After | What it means |
 |---|---|---|---|
-| Alice's token balance, across the clawback | `100000000000` | `100000000000` | her vested remainder was forfeited, never delivered |
-| tokens the creator recovered | `0` | `900000000000` | the grace window let the creator reclaim fully-vested tokens |
+| Alice's token balance, across the clawback | `"100,000"` | `"100,000"` | her vested remainder was forfeited, never delivered |
+| tokens the creator recovered | `"0"` | `"900,000"` | the grace window let the creator reclaim fully-vested tokens |
 
 This test passes: the grace window is the program's design, working as written. The question for review is whether a *vested* entitlement should be forfeitable at all. Alice met every vesting condition; she lost the remainder to a calendar deadline, not to an unmet cliff or an early exit. Many vesting designs make vested tokens claimable indefinitely, so two questions follow: is the forfeiture intended, and is a grace window measured in days long enough to be fair to a recipient who is simply slow?
 
