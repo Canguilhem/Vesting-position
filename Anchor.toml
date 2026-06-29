@@ -9,7 +9,7 @@ skip-lint = false
 vesting_positions = "4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3"
 
 [programs.localnet]
-vesting_positions = "7DkU9TQhcN87f2djZDd2MjjPZoXLfnZZj8HhybeZswX1"
+vesting_positions = "4hAzFNAWaGZ5YpbRkSsfLNnQ3JXenkb3hAQ19nL7vTH3"
 
 [provider]
 cluster = "localnet"

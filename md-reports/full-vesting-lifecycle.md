@@ -236,10 +236,10 @@ Alice is whitelisted for her own leaf, but this claim uses Charlie's allocation 
 |---|---|---|---|
 | Alice token balance increment from Charlie's position | `"550,000"` | `"820,000"` | Alice received Charlie's vested tokens, not a replay of her own allocation |
 
-- [x] increment matches charlie allocation math: `270000000000`
+- [x] increment matches charlie allocation math: `"270,000"`
 - [x] increment uses charlie allocation not alice own leaf: `true`
-- [x] charlie position nft owner is alice: `4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P`
-- [x] alice still owns her original position via bob: `ErV63ApqLgh1Je5PdiVj6kzwkKJmLjKV41QoN9U4BNag`
+- [x] charlie's position owner is alice: `4wQQJM9LNuhinieNAqmHuPCm8LXDTVfhx84P32nAVE9P`
+- [x] Alice's original position owner is bob: `ErV63ApqLgh1Je5PdiVj6kzwkKJmLjKV41QoN9U4BNag`
 
 **Structured logs**
 
