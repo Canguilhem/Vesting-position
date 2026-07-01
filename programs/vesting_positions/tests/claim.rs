@@ -10,16 +10,13 @@
 
 mod common;
 
-use anchor_litesvm::{AssertionHelpers, Report, Signer, md_kv, md_table};
-use mpl_core;
-use vesting_positions::{instruction, leaf_hash, verify, Campaign};
+use anchor_litesvm::{AssertionHelpers, Signer};
+use vesting_positions::{instruction, leaf_hash, verify};
 
 use common::{
     assert_receipt_set, fund_keypair, load_keypair, load_whitelist_user, random_proofs, setup,
     LAMPORTS, MOCK_ALLOC, NOT_WHITELISTED, WHITELISTED_1, WHITELISTED_2,
 };
-
-use crate::common::{CampaignConfig, TOTAL_DEPOSIT};
 
 // ---------------------------------------------------------------------------
 // Happy path
