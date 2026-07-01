@@ -1,10 +1,12 @@
 import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Address } from "@solana/addresses";
 import { generateKeyPairSigner } from "@solana/signers";
 import { buildMintSetupTransactionInstructions } from "../solana/vesting-positions";
 import { parseProgramError } from "../solana/vesting-positions";
 import { saveToken, type SavedToken } from "../lib/token-registry";
 import { useSendWalletTransaction } from "./useSendWalletTransaction";
+import { invalidateAfterOnChainWrite } from "../lib/invalidate-on-chain-queries";
 
 export type CreateTokenFormValues = {
   decimals: number;
@@ -38,7 +40,8 @@ function validateCreateTokenForm(values: CreateTokenFormValues): string | null {
 }
 
 export function useCreateToken() {
-  const { sendWithWallet, isSending, signature, error, reset, isConnected } =
+  const queryClient = useQueryClient();
+  const { sendWithWallet, isSending, signature, error, reset, isConnected, wallet } =
     useSendWalletTransaction();
   const [localError, setLocalError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<CreateTokenResult | null>(null);
@@ -92,13 +95,19 @@ export function useCreateToken() {
         saveToken(saved);
 
         setLastResult(result);
+        if (wallet?.account.address) {
+          invalidateAfterOnChainWrite(
+            queryClient,
+            String(wallet.account.address),
+          );
+        }
         return result;
       } catch (err) {
         setLocalError(parseProgramError(err));
         return null;
       }
     },
-    [isConnected, reset, sendWithWallet],
+    [isConnected, reset, sendWithWallet, queryClient, wallet],
   );
 
   return {

@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSolanaClient } from "@solana/react-hooks";
 import {
   buildClaimInstructions,
@@ -12,6 +13,7 @@ import {
   merkleRootMatchesCampaign,
 } from "../lib/merkle";
 import { useSendWalletTransaction } from "./useSendWalletTransaction";
+import { invalidateAfterOnChainWrite } from "../lib/invalidate-on-chain-queries";
 
 function explorerTxUrl(signature: string): string {
   return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
@@ -23,6 +25,7 @@ function proofsToBytes(proofs: number[][]): Uint8Array[] {
 
 export function useClaim(campaignAddress: Address, campaign: CampaignData) {
   const client = useSolanaClient();
+  const queryClient = useQueryClient();
   const { sendWithWallet, isSending, signature, error, reset, isConnected } =
     useSendWalletTransaction();
   const [localError, setLocalError] = useState<string | null>(null);
@@ -37,8 +40,11 @@ export function useClaim(campaignAddress: Address, campaign: CampaignData) {
     reset();
 
     try {
+      let walletForInvalidation: string | undefined;
+
       await sendWithWallet("claim", async (walletSigner) => {
         const userAddress = walletSigner.address;
+        walletForInvalidation = String(userAddress);
         const { isFirstClaim } = await getUserClaimState(
           client.runtime.rpc,
           campaignAddress,
@@ -75,6 +81,10 @@ export function useClaim(campaignAddress: Address, campaign: CampaignData) {
           allocation,
         });
       });
+
+      if (walletForInvalidation) {
+        invalidateAfterOnChainWrite(queryClient, walletForInvalidation);
+      }
     } catch (err) {
       setLocalError(parseProgramError(err));
     }
@@ -85,6 +95,7 @@ export function useClaim(campaignAddress: Address, campaign: CampaignData) {
     client,
     campaignAddress,
     campaign,
+    queryClient,
   ]);
 
   const txError = localError ?? error;

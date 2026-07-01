@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Address } from "@solana/addresses";
 import {
   useCampaigns,
   useUserClaimState,
   type CampaignRecord,
 } from "../hooks/useCampaigns";
+import { useMerkleAllowlist } from "../hooks/useMerkleAllowlist";
 import {
   getCampaignStatus,
   CAMPAIGN_STATUS_COLORS,
@@ -14,10 +15,6 @@ import { useClaim } from "../hooks/useClaim";
 import { CreateTokenPanel } from "./CreateTokenPanel";
 import { InitializeCampaign } from "./InitializeCampaign";
 import { formatPercent, formatTokens } from "../lib/vesting";
-import {
-  getMerkleProofForWallet,
-  merkleRootMatchesCampaign,
-} from "../lib/merkle";
 import { useWalletConnection } from "@solana/react-hooks";
 
 function truncate(value: string, head = 6, tail = 4): string {
@@ -113,30 +110,10 @@ function ClaimPanel({ record }: { record: CampaignRecord }) {
   const { claim, isSending, signature, explorerTxUrl, error, canClaim } =
     useClaim(record.address, record.account);
 
-  const [allowlist, setAllowlist] = useState<{
-    allocation: bigint;
-    onList: boolean;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!userAddress) {
-      setAllowlist(null);
-      return;
-    }
-    void getMerkleProofForWallet(userAddress).then((proof) => {
-      if (!proof) {
-        setAllowlist({ allocation: 0n, onList: false });
-        return;
-      }
-      setAllowlist({
-        allocation: proof.allocation,
-        onList: merkleRootMatchesCampaign(
-          record.account.merkleRoot,
-          proof.merkleRoot,
-        ),
-      });
-    });
-  }, [userAddress, record.account.merkleRoot]);
+  const { allowlist, loading: allowlistLoading } = useMerkleAllowlist(
+    userAddress,
+    record.account.merkleRoot,
+  );
 
   const campaignStatus = getCampaignStatus(record.account);
   const canSubmit =
@@ -236,7 +213,7 @@ function ClaimPanel({ record }: { record: CampaignRecord }) {
         <button
           type="button"
           onClick={() => void claim().then(() => refresh())}
-          disabled={!canSubmit || claimStateLoading}
+          disabled={!canSubmit || claimStateLoading || allowlistLoading}
           className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
         >
           {isSending

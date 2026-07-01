@@ -23,6 +23,7 @@ npm run dev
 | Layer               | Package                                                             |
 | ------------------- | ------------------------------------------------------------------- |
 | UI                  | React 19 + Vite + Tailwind 4                                        |
+| Data fetching       | TanStack Query (`@tanstack/react-query`) — shared RPC cache           |
 | Wallet / RPC / send | `@solana/client` + `@solana/react-hooks` (framework-kit)            |
 | Program client      | **Codama-generated** Kit client (`src/generated/vesting-positions`) |
 | Built-in programs   | `@solana-program/compute-budget`                                    |
@@ -71,6 +72,22 @@ When adding a new instruction builder, pass `TransactionSigner` for wallet-owned
 ### Compute unit budget
 
 Instruction builders return **program instructions only** (no hardcoded `SetComputeUnitLimit`). On send, framework-kit's `prepareTransaction` simulates the unsigned transaction, reads `unitsConsumed`, applies `COMPUTE_UNIT_LIMIT_MULTIPLIER` (15% headroom), and prepends the compute-budget ix. If simulation fails, the client falls back to a safe upper bound.
+
+### TanStack Query
+
+`QueryClientProvider` wraps the app in `src/providers.tsx`. RPC reads use shared query keys in `src/lib/query-keys.ts`:
+
+| Hook / query | Key | Notes |
+| ------------ | --- | ----- |
+| `useCampaigns` | `campaigns` | Shared by Browse + Profile |
+| `useUserClaimState` | `claimState` + campaign + wallet | |
+| `useWalletTokenBalance` | `walletBalance` + wallet + mint | Launch tab deposit check |
+| `useMerkleAllowlist` | `merkleProof` + wallet | Static JSON, infinite stale time |
+| `useProfile` | `profile` + positions infinite query | Position scan paginated via `useInfiniteQuery` |
+
+After successful claim / initialize / create-token, `invalidateAfterOnChainWrite()` refreshes affected caches.
+
+In dev, open the TanStack Query panel (bottom-left) to inspect cache keys, stale state, and refetches.
 
 ## Program interaction
 

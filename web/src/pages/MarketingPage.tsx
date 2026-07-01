@@ -256,7 +256,7 @@ export function MarketingPage() {
               Solana Explorer →
             </a>
             <a
-              href="https://turbin3.com"
+              href="https://turbin3.org"
               target="_blank"
               rel="noreferrer"
               className="rounded-lg border border-border-low px-4 py-2 transition hover:border-accent/30"

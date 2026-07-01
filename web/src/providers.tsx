@@ -1,7 +1,10 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { SolanaProvider } from "@solana/react-hooks";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, useState } from "react";
 import { autoDiscover, createClient } from "@solana/client";
 import { RPC_ENDPOINT } from "./config";
+import { createQueryClient } from "./lib/query-client";
+import { QueryDevtools } from "./QueryDevtools";
 
 const websocketEndpoint = RPC_ENDPOINT.replace("https://", "wss://").replace(
   "http://",
@@ -15,5 +18,12 @@ const client = createClient({
 });
 
 export function Providers({ children }: PropsWithChildren) {
-  return <SolanaProvider client={client}>{children}</SolanaProvider>;
+  const [queryClient] = useState(createQueryClient);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SolanaProvider client={client}>{children}</SolanaProvider>
+      <QueryDevtools />
+    </QueryClientProvider>
+  );
 }

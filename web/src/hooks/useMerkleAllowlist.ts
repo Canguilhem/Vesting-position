@@ -1,0 +1,60 @@
+import { useQuery } from "@tanstack/react-query";
+import {
+  getMerkleProofForWallet,
+  loadMerkleFixture,
+  merkleRootMatchesCampaign,
+} from "../lib/merkle";
+import { QUERY_STALE } from "../lib/query-client";
+import { queryKeys } from "../lib/query-keys";
+
+export function useMerkleFixture() {
+  const query = useQuery({
+    queryKey: queryKeys.merkleFixture(),
+    queryFn: loadMerkleFixture,
+    staleTime: QUERY_STALE.merkle,
+  });
+
+  return {
+    fixture: query.data,
+    loading: query.isLoading,
+    error: query.error,
+  };
+}
+
+export function useMerkleAllowlist(
+  walletAddress: string | undefined,
+  campaignMerkleRoot: Uint8Array,
+) {
+  const query = useQuery({
+    queryKey: walletAddress
+      ? queryKeys.merkleProof(walletAddress)
+      : ["merkleProof", "disabled"],
+    queryFn: () => getMerkleProofForWallet(walletAddress!),
+    enabled: Boolean(walletAddress),
+    staleTime: QUERY_STALE.merkle,
+  });
+
+  if (!walletAddress) {
+    return { allowlist: null as null, loading: false };
+  }
+
+  if (query.isLoading) {
+    return { allowlist: null as null, loading: true };
+  }
+
+  const proof = query.data;
+  if (!proof) {
+    return {
+      allowlist: { allocation: 0n, onList: false },
+      loading: false,
+    };
+  }
+
+  return {
+    allowlist: {
+      allocation: proof.allocation,
+      onList: merkleRootMatchesCampaign(campaignMerkleRoot, proof.merkleRoot),
+    },
+    loading: false,
+  };
+}

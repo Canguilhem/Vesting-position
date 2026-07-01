@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { address } from "@solana/addresses";
 import {
   buildInitializeInstructions,
@@ -13,12 +14,14 @@ import {
 } from "../lib/initialize";
 import { useSendWalletTransaction } from "./useSendWalletTransaction";
 import { requireWalletSigner } from "../solana/wallet-transaction";
+import { invalidateAfterOnChainWrite } from "../lib/invalidate-on-chain-queries";
 
 function explorerTxUrl(signature: string): string {
   return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
 }
 
 export function useInitialize() {
+  const queryClient = useQueryClient();
   const {
     sendWithWallet,
     isSending,
@@ -92,6 +95,7 @@ export function useInitialize() {
 
         setProgress(null);
         setLastResult(result);
+        invalidateAfterOnChainWrite(queryClient, String(creatorAddress));
         return result;
       } catch (err) {
         setProgress(null);
@@ -99,7 +103,7 @@ export function useInitialize() {
         return null;
       }
     },
-    [isConnected, reset, sendWithWallet, wallet, status],
+    [isConnected, reset, sendWithWallet, wallet, status, queryClient],
   );
 
   return {

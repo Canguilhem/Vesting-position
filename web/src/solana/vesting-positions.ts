@@ -116,6 +116,14 @@ export async function fetchAllCampaigns(
     .filter((record): record is CampaignRecord => record != null);
 }
 
+export async function fetchSortedCampaigns(
+  rpc: AppRpc,
+): Promise<CampaignRecord[]> {
+  const records = await fetchAllCampaigns(rpc);
+  records.sort((a, b) => b.account.start - a.account.start);
+  return records;
+}
+
 export async function accountExists(rpc: AppRpc, addr: Address): Promise<boolean> {
   const info = await rpc.getAccountInfo(addr, { encoding: "base64" }).send();
   return info.value != null && info.value.data.length > 0;

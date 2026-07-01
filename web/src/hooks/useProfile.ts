@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { address, type Address } from "@solana/addresses";
 import { useSolanaClient, useWalletConnection } from "@solana/react-hooks";
 import { loadSavedTokens, type SavedToken } from "../lib/token-registry";
 import { paginateSlice } from "../lib/pagination";
+import { QUERY_STALE } from "../lib/query-client";
+import { queryKeys } from "../lib/query-keys";
 import { fetchWalletTokenBalance } from "../solana/token-balance";
 import {
-  fetchAllCampaigns,
+  fetchSortedCampaigns,
   type CampaignRecord,
 } from "../solana/vesting-positions";
 import {
@@ -16,6 +19,20 @@ import {
   scanCampaignsForPositions,
   type PositionRecord,
 } from "../solana/profile-data";
+
+type AppRpc = ReturnType<typeof useSolanaClient>["runtime"]["rpc"];
+
+async function ensureCampaigns(
+  queryClient: QueryClient,
+  rpc: AppRpc,
+  cached: CampaignRecord[] | undefined,
+): Promise<CampaignRecord[]> {
+  if (cached) return cached;
+  return queryClient.fetchQuery({
+    queryKey: queryKeys.campaigns(),
+    queryFn: () => fetchSortedCampaigns(rpc),
+  });
+}
 
 export type ProfileMint = {
   mint: Address;
@@ -44,136 +61,130 @@ export type PositionsState = {
 
 export function useProfile() {
   const client = useSolanaClient();
+  const queryClient = useQueryClient();
   const { wallet, status } = useWalletConnection();
-
-  const [data, setData] = useState<ProfileData | null>(null);
-  const [allCampaigns, setAllCampaigns] = useState<CampaignRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const walletAddress = wallet?.account.address;
+  const connected = status === "connected" && !!walletAddress;
+  const walletKey = walletAddress ? String(walletAddress) : "";
 
   const [campaignPage, setCampaignPage] = useState(0);
   const [mintPage, setMintPage] = useState(0);
   const [positionPage, setPositionPage] = useState(0);
 
-  const [positionsState, setPositionsState] = useState<PositionsState>({
-    items: [],
-    campaignsScanned: 0,
-    campaignsTotal: 0,
-    done: false,
-    loading: false,
+  const campaignsQuery = useQuery({
+    queryKey: queryKeys.campaigns(),
+    queryFn: () => fetchSortedCampaigns(client.runtime.rpc),
+    enabled: connected,
+    staleTime: QUERY_STALE.campaigns,
   });
 
-  const resetPositionScan = useCallback(() => {
-    setPositionsState({
-      items: [],
-      campaignsScanned: 0,
-      campaignsTotal: 0,
-      done: false,
-      loading: false,
-    });
-    setPositionPage(0);
-  }, []);
-
-  const scanMorePositions = useCallback(
-    async (campaigns: CampaignRecord[], fromIndex: number) => {
-      if (!wallet || status !== "connected") return;
-
-      setPositionsState((prev) => ({ ...prev, loading: true }));
-
-      try {
-        const result = await scanCampaignsForPositions(
-          client.runtime.rpc,
-          wallet.account.address,
-          campaigns,
-          fromIndex,
-          POSITION_CAMPAIGN_SCAN_BATCH,
-        );
-
-        setPositionsState((prev) => ({
-          items: dedupePositions([...prev.items, ...result.positions]),
-          campaignsScanned: result.campaignsScanned,
-          campaignsTotal: result.campaignsTotal,
-          done: result.done,
-          loading: false,
-        }));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        setPositionsState((prev) => ({ ...prev, loading: false }));
-      }
-    },
-    [client, wallet, status],
-  );
-
-  const refresh = useCallback(async () => {
-    if (!wallet || status !== "connected") {
-      setData(null);
-      setAllCampaigns([]);
-      setError(null);
-      resetPositionScan();
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    resetPositionScan();
-    setCampaignPage(0);
-    setMintPage(0);
-
-    try {
-      const walletAddress = wallet.account.address;
-      const rpc = client.runtime.rpc;
-
-      const campaigns = await fetchAllCampaigns(rpc);
-      setAllCampaigns(campaigns);
+  const profileQuery = useQuery({
+    queryKey: queryKeys.profile(walletKey),
+    queryFn: async () => {
+      const campaigns = await ensureCampaigns(
+        queryClient,
+        client.runtime.rpc,
+        campaignsQuery.data,
+      );
 
       const createdCampaigns = filterCampaignsByCreator(
         campaigns,
-        walletAddress,
+        walletAddress!,
       );
 
       const mints = await buildProfileMints(
-        rpc,
-        walletAddress,
+        client.runtime.rpc,
+        walletAddress!,
         loadSavedTokens(),
         createdCampaigns,
       );
 
-      setData({
-        wallet: walletAddress,
+      return {
+        wallet: walletAddress!,
         createdCampaigns,
         mints,
         allCampaignsCount: campaigns.length,
-      });
+      } satisfies ProfileData;
+    },
+    enabled: connected && campaignsQuery.isSuccess,
+    staleTime: QUERY_STALE.profile,
+  });
 
-      void scanMorePositions(campaigns, 0);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [client, wallet, status, resetPositionScan, scanMorePositions]);
+  const positionsQuery = useInfiniteQuery({
+    queryKey: queryKeys.profilePositions(walletKey),
+    queryFn: async ({ pageParam }) => {
+      const campaigns = await ensureCampaigns(
+        queryClient,
+        client.runtime.rpc,
+        campaignsQuery.data,
+      );
+
+      return scanCampaignsForPositions(
+        client.runtime.rpc,
+        walletAddress!,
+        campaigns,
+        pageParam,
+        POSITION_CAMPAIGN_SCAN_BATCH,
+      );
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.done ? undefined : lastPage.nextCampaignIndex,
+    enabled: connected && campaignsQuery.isSuccess,
+  });
+
+  const positionsState = useMemo((): PositionsState => {
+    const pages = positionsQuery.data?.pages ?? [];
+    const lastPage = pages.at(-1);
+
+    return {
+      items: dedupePositions(pages.flatMap((page) => page.positions)),
+      campaignsScanned: lastPage?.campaignsScanned ?? 0,
+      campaignsTotal: lastPage?.campaignsTotal ?? campaignsQuery.data?.length ?? 0,
+      done: lastPage?.done ?? false,
+      loading: positionsQuery.isFetchingNextPage,
+    };
+  }, [positionsQuery, campaignsQuery.data?.length]);
+
+  const refresh = useCallback(async () => {
+    if (!connected) return;
+    await campaignsQuery.refetch();
+    await profileQuery.refetch();
+    await queryClient.resetQueries({
+      queryKey: queryKeys.profilePositions(walletKey),
+    });
+    await positionsQuery.refetch();
+    setCampaignPage(0);
+    setMintPage(0);
+    setPositionPage(0);
+  }, [
+    connected,
+    campaignsQuery,
+    profileQuery,
+    positionsQuery,
+    queryClient,
+    walletKey,
+  ]);
 
   const loadMorePositions = useCallback(() => {
     if (
       positionsState.loading ||
       positionsState.done ||
-      allCampaigns.length === 0
+      !positionsQuery.hasNextPage
     ) {
       return;
     }
-    void scanMorePositions(allCampaigns, positionsState.campaignsScanned);
-  }, [
-    allCampaigns,
-    positionsState.loading,
-    positionsState.done,
-    positionsState.campaignsScanned,
-    scanMorePositions,
-  ]);
+    void positionsQuery.fetchNextPage();
+  }, [positionsState.loading, positionsState.done, positionsQuery]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const data = profileQuery.data ?? null;
+  const loading =
+    campaignsQuery.isLoading ||
+    profileQuery.isLoading ||
+    (positionsQuery.isLoading && positionsState.items.length === 0);
+
+  const error =
+    campaignsQuery.error ?? profileQuery.error ?? positionsQuery.error;
 
   const campaignSlice = data
     ? paginateSlice(data.createdCampaigns, campaignPage, PROFILE_LIST_PAGE_SIZE)
@@ -192,10 +203,14 @@ export function useProfile() {
   return {
     data,
     loading,
-    error,
+    error: error
+      ? error instanceof Error
+        ? error.message
+        : String(error)
+      : null,
     refresh,
-    isConnected: status === "connected",
-    walletAddress: wallet?.account.address,
+    isConnected: connected,
+    walletAddress,
 
     campaigns: campaignSlice,
     setCampaignPage,
@@ -263,3 +278,5 @@ async function buildProfileMints(
     return String(b.mint).localeCompare(String(a.mint));
   });
 }
+
+export type { PositionRecord };

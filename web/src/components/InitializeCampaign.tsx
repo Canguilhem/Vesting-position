@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
-import { address, type Address } from "@solana/addresses";
-import { useSolanaClient, useWalletConnection } from "@solana/react-hooks";
+import { type Address } from "@solana/addresses";
+import { useWalletConnection } from "@solana/react-hooks";
 import {
   DEFAULT_CAMPAIGN_DEPOSIT,
   defaultScheduleTimestamps,
   toDatetimeLocal,
   type CampaignFormValues,
 } from "../lib/initialize";
-import { loadMerkleFixture } from "../lib/merkle";
 import { loadSavedTokens, type SavedToken } from "../lib/token-registry";
 import { formatTokens } from "../lib/vesting";
-import { fetchWalletTokenBalance } from "../solana/token-balance";
 import { useInitialize } from "../hooks/useInitialize";
+import { useMerkleFixture } from "../hooks/useMerkleAllowlist";
+import { useWalletTokenBalance } from "../hooks/useWalletTokenBalance";
 import { CampaignSuccessModal } from "./CampaignSuccessModal";
 
 function fieldClassName(): string {
@@ -29,13 +29,10 @@ export function InitializeCampaign({
   prefilledMint?: Address | null;
   onViewCampaign?: (campaign: Address) => void;
 }) {
-  const client = useSolanaClient();
-  const { wallet, status } = useWalletConnection();
+  const { status } = useWalletConnection();
   const schedule = defaultScheduleTimestamps();
 
   const [savedTokens, setSavedTokens] = useState<SavedToken[]>([]);
-  const [walletBalance, setWalletBalance] = useState<bigint | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   const [values, setValues] = useState<CampaignFormValues>(() => ({
@@ -62,6 +59,11 @@ export function InitializeCampaign({
     canInitialize,
   } = useInitialize();
 
+  const { fixture: merkleFixture } = useMerkleFixture();
+
+  const { balance: walletBalance, loading: balanceLoading } =
+    useWalletTokenBalance(values.mint.trim() || null);
+
   useEffect(() => {
     setSavedTokens(loadSavedTokens());
   }, [lastResult]);
@@ -73,42 +75,11 @@ export function InitializeCampaign({
   }, [prefilledMint]);
 
   useEffect(() => {
-    void loadMerkleFixture().then((fixture) => {
-      setValues((prev) =>
-        prev.merkleRootHex ? prev : { ...prev, merkleRootHex: fixture.merkleRoot },
-      );
-    });
-  }, []);
-
-  useEffect(() => {
-    const mintStr = values.mint.trim();
-    const owner = wallet?.account.address;
-    if (!mintStr || !owner || status !== "connected") {
-      setWalletBalance(null);
-      return;
-    }
-
-    let cancelled = false;
-    setBalanceLoading(true);
-    void fetchWalletTokenBalance(
-      client.runtime.rpc,
-      owner,
-      address(mintStr),
-    )
-      .then(({ balance }) => {
-        if (!cancelled) setWalletBalance(balance);
-      })
-      .catch(() => {
-        if (!cancelled) setWalletBalance(null);
-      })
-      .finally(() => {
-        if (!cancelled) setBalanceLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [values.mint, wallet, status, client, lastResult]);
+    if (!merkleFixture) return;
+    setValues((prev) =>
+      prev.merkleRootHex ? prev : { ...prev, merkleRootHex: merkleFixture.merkleRoot },
+    );
+  }, [merkleFixture]);
 
   useEffect(() => {
     if (lastResult) setShowModal(true);
