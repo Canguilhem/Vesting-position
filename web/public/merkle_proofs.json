@@ -1,0 +1,109 @@
+{
+  "4wqqjm9lnuhinienaqmhupcm8lxdtvfhx84p32nave9p": [
+    {
+      "amount": "1000000000000",
+      "proofs": [
+        "0x012bfaed406aa008872eda16649366734ac65ac60a665958254f808bc277d640e6",
+        "0x01abe50656b1f9f399b00530def3e5b0dccd143d8c5977dea8c9f7f4f29c39f834",
+        "0x013bdf4957e8b83fbe8079bcbfa522f8b002b977c96203b61cdd409be27a2be2c8",
+        "0x0117be734ec8ac54085b1103542cc1478f7c3d6a9366de30e51a64d38241a73af9"
+      ]
+    }
+  ],
+  "6cdmfmtnazhbuqaxt8wgw4agr9haqa4qfeuujir1iz2u": [
+    {
+      "amount": "2000000000000",
+      "proofs": [
+        "0x00e0a17e5309a4b558ad6e46d8a4b44119e3c5a5a04ec0b066c9f6584a8effa5a3",
+        "0x01abe50656b1f9f399b00530def3e5b0dccd143d8c5977dea8c9f7f4f29c39f834",
+        "0x013bdf4957e8b83fbe8079bcbfa522f8b002b977c96203b61cdd409be27a2be2c8",
+        "0x0117be734ec8ac54085b1103542cc1478f7c3d6a9366de30e51a64d38241a73af9"
+      ]
+    }
+  ],
+  "bunzrgcwqwxfx4bn9pha1p9wpjgrahkryvatzdaryhrb": [
+    {
+      "amount": "3000000000000",
+      "proofs": [
+        "0x013f3d17c03648c8363b5243a99f89b5b9115f7849d0eb3cfe6eda80d4146d164a",
+        "0x000c7f25a2b538bb8b1be08f3cd2b962c751ee0351b505ef01dc0d52143016cd57",
+        "0x013bdf4957e8b83fbe8079bcbfa522f8b002b977c96203b61cdd409be27a2be2c8",
+        "0x0117be734ec8ac54085b1103542cc1478f7c3d6a9366de30e51a64d38241a73af9"
+      ]
+    }
+  ],
+  "bykjdslanftf29rif72grjugxdyhdtf3jtguuf7dpowy": [
+    {
+      "amount": "4000000000000",
+      "proofs": [
+        "0x003bfd7107abda33a66b6577187ebd72168a466bab95a266bbb5d6cbc0e0cbfeba",
+        "0x000c7f25a2b538bb8b1be08f3cd2b962c751ee0351b505ef01dc0d52143016cd57",
+        "0x013bdf4957e8b83fbe8079bcbfa522f8b002b977c96203b61cdd409be27a2be2c8",
+        "0x0117be734ec8ac54085b1103542cc1478f7c3d6a9366de30e51a64d38241a73af9"
+      ]
+    }
+  ],
+  "cw9yrsyfhuusbabqezstkarbahn4nwdlktjfoixahr2u": [
+    {
+      "amount": "3000000000000",
+      "proofs": [
+        "0x0189fc1af24f9fb7493442d4ae3ef652428eccea81c17c5c2c68a7097aeac728f8",
+        "0x010200033929a8d2897308f724a98776f03f4d01773f6349cb9152d313b386d0e5",
+        "0x0030b0c4f9a58875ea5498a656f70aead549ee626cfe55ddbbe16f1be5bf7ff24b",
+        "0x0117be734ec8ac54085b1103542cc1478f7c3d6a9366de30e51a64d38241a73af9"
+      ]
+    }
+  ],
+  "ed82aryznxxhjxeftt9yhxbtdag7j1yfvxvc7uyuxjvm": [
+    {
+      "amount": "1000000000000",
+      "proofs": [
+        "0x000a283bb4317b8cd65271064547cd5d7e000636e55f8b9bf0d0fc5faf71547151",
+        "0x010200033929a8d2897308f724a98776f03f4d01773f6349cb9152d313b386d0e5",
+        "0x0030b0c4f9a58875ea5498a656f70aead549ee626cfe55ddbbe16f1be5bf7ff24b",
+        "0x0117be734ec8ac54085b1103542cc1478f7c3d6a9366de30e51a64d38241a73af9"
+      ]
+    }
+  ],
+  "h3bsrapkzlqyihsz3nv7lcvaph7owhzeuwqgfrcbpr7x": [
+    {
+      "amount": "4000000000000",
+      "proofs": [
+        "0x0126ef294af8e59ce9dc52df4bbd0bbdc11af937f779d008f92482067bde6ab96b",
+        "0x00af188725ca40c2a4aac3aeaddec6c310252810f484881fed584c353723ec48f6",
+        "0x0030b0c4f9a58875ea5498a656f70aead549ee626cfe55ddbbe16f1be5bf7ff24b",
+        "0x0117be734ec8ac54085b1103542cc1478f7c3d6a9366de30e51a64d38241a73af9"
+      ]
+    }
+  ],
+  "h87xi4cuqrupxzppv3jottmre6dyr5pcamk5bkqqbftg": [
+    {
+      "amount": "2000000000000",
+      "proofs": [
+        "0x0021c523e4a3f55404e47b8e8ae0ade5b6b4e8dc144578ed98c7797ffd38a03d45",
+        "0x00af188725ca40c2a4aac3aeaddec6c310252810f484881fed584c353723ec48f6",
+        "0x0030b0c4f9a58875ea5498a656f70aead549ee626cfe55ddbbe16f1be5bf7ff24b",
+        "0x0117be734ec8ac54085b1103542cc1478f7c3d6a9366de30e51a64d38241a73af9"
+      ]
+    }
+  ],
+  "hewu693qgupfz89qi4zgi3yttyyqd7jdtrmcevktiucq": [
+    {
+      "amount": "100000000000",
+      "proofs": [
+        "0x0100ec8572be24ccfe0a0e7621ae345cad190b774df3870f14ec31e8b5c7c97c72",
+        "0x0031302e60c02a278139b4dbfeba62a11eaddbfbdf67dff09641d71cda03a19254"
+      ]
+    }
+  ],
+  "hkxkf4wy8hc74zk6hnfelhnzcblj6rck1yk25ucoo2gz": [
+    {
+      "amount": "5000000000000",
+      "proofs": [
+        "0x00016ec35e86d224b3ca95e712003dcc1b7cbb2ca1f2445675003a75e906ed1815",
+        "0x0031302e60c02a278139b4dbfeba62a11eaddbfbdf67dff09641d71cda03a19254"
+      ]
+    }
+  ],
+  "merkleRoot": "c3e5476cbbb80a935cbe2370d581ea79e009cbb7ca9cd72d95b6cc941d9fc52d"
+}
