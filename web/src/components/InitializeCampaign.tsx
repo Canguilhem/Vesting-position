@@ -1,26 +1,26 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useForm } from "@tanstack/react-form";
 import { type Address } from "@solana/addresses";
 import { useWalletConnection } from "@solana/react-hooks";
 import {
-  DEFAULT_CAMPAIGN_DEPOSIT,
-  defaultScheduleTimestamps,
-  toDatetimeLocal,
+  applyDefaultSchedule,
+  collectCampaignFormErrors,
+  createDefaultCampaignFormValues,
+  DEFAULT_CAMPAIGN_DEPOSIT_TOKENS,
+  formatScheduleLocal,
+  fromDatetimeLocal,
+  isStartTooSoon,
   type CampaignFormValues,
+  type InitializeResult,
 } from "../lib/initialize";
 import { loadSavedTokens, type SavedToken } from "../lib/token-registry";
-import { formatTokens } from "../lib/vesting";
+import { formatTokenCount, formatTokens, rawToTokens } from "../lib/vesting";
 import { useInitialize } from "../hooks/useInitialize";
+import { useClusterTime } from "../hooks/useClusterTime";
 import { useMerkleFixture } from "../hooks/useMerkleAllowlist";
 import { useWalletTokenBalance } from "../hooks/useWalletTokenBalance";
 import { CampaignSuccessModal } from "./CampaignSuccessModal";
-
-function fieldClassName(): string {
-  return "w-full rounded-lg border border-border-low bg-background/60 px-3 py-2 text-sm outline-none transition focus:border-accent/40";
-}
-
-function labelClassName(): string {
-  return "block space-y-1.5 text-sm";
-}
+import { fieldClassName, labelClassName } from "./form-styles";
 
 export function InitializeCampaign({
   prefilledMint,
@@ -29,91 +29,82 @@ export function InitializeCampaign({
   prefilledMint?: Address | null;
   onViewCampaign?: (campaign: Address) => void;
 }) {
-  const { status } = useWalletConnection();
-  const schedule = defaultScheduleTimestamps();
+  const { fixture: merkleFixture, loading: merkleLoading } = useMerkleFixture();
 
-  const [savedTokens, setSavedTokens] = useState<SavedToken[]>([]);
-  const [showModal, setShowModal] = useState(false);
-
-  const [values, setValues] = useState<CampaignFormValues>(() => ({
-    mint: prefilledMint ? String(prefilledMint) : "",
-    totalDeposit: String(DEFAULT_CAMPAIGN_DEPOSIT),
-    merkleRootHex: "",
-    start: toDatetimeLocal(schedule.start),
-    end: toDatetimeLocal(schedule.end),
-    cliffDays: 1,
-    cliffReleaseBps: 1000,
-    graceDays: 7,
-    isTransferable: true,
-    name: "Vesting campaign",
-    uri: "https://example.com/collection.json",
-  }));
-
-  const {
-    initialize,
-    isSending,
-    progress,
-    lastResult,
-    clearResult,
-    error,
-    canInitialize,
-  } = useInitialize();
-
-  const { fixture: merkleFixture } = useMerkleFixture();
-
-  const { balance: walletBalance, loading: balanceLoading } =
-    useWalletTokenBalance(values.mint.trim() || null);
-
-  useEffect(() => {
-    setSavedTokens(loadSavedTokens());
-  }, [lastResult]);
-
-  useEffect(() => {
-    if (prefilledMint) {
-      setValues((prev) => ({ ...prev, mint: String(prefilledMint) }));
-    }
-  }, [prefilledMint]);
-
-  useEffect(() => {
-    if (!merkleFixture) return;
-    setValues((prev) =>
-      prev.merkleRootHex ? prev : { ...prev, merkleRootHex: merkleFixture.merkleRoot },
+  if (merkleLoading || !merkleFixture) {
+    return (
+      <p className="text-sm text-muted">Loading bundled allowlist fixture…</p>
     );
-  }, [merkleFixture]);
-
-  useEffect(() => {
-    if (lastResult) setShowModal(true);
-  }, [lastResult]);
-
-  const setField = <K extends keyof CampaignFormValues>(
-    key: K,
-    value: CampaignFormValues[K],
-  ) => {
-    setValues((prev) => ({ ...prev, [key]: value }));
-  };
-
-  let depositAmount = 0n;
-  try {
-    depositAmount = BigInt(values.totalDeposit);
-  } catch {
-    depositAmount = 0n;
   }
 
-  const insufficientBalance =
-    walletBalance != null && depositAmount > 0n && walletBalance < depositAmount;
-
   return (
-    <>
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold">Launch a campaign</h3>
-          <p className="max-w-2xl text-sm text-muted">
-            Deposit a portion of your token supply into a new vesting campaign.
-            Create the token first in the Token tab if you have not minted a
-            supply yet.
-          </p>
-        </div>
+    <InitializeCampaignForm
+      prefilledMint={prefilledMint}
+      merkleRoot={merkleFixture.merkleRoot}
+      onViewCampaign={onViewCampaign}
+    />
+  );
+}
 
+function InitializeCampaignForm({
+  prefilledMint,
+  merkleRoot,
+  onViewCampaign,
+}: {
+  prefilledMint?: Address | null;
+  merkleRoot: string;
+  onViewCampaign?: (campaign: Address) => void;
+}) {
+  const { status } = useWalletConnection();
+  const [savedTokens] = useState<SavedToken[]>(() => loadSavedTokens());
+  const [showModal, setShowModal] = useState(false);
+  const [lastResult, setLastResult] = useState<InitializeResult | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const { initialize } = useInitialize();
+  const { clusterNowSec } = useClusterTime();
+
+  const form = useForm({
+    defaultValues: createDefaultCampaignFormValues(
+      prefilledMint ? String(prefilledMint) : null,
+      merkleRoot,
+    ),
+    onSubmit: async ({ value }) => {
+      setSubmitError(null);
+      try {
+        const result = await initialize(value);
+        setLastResult(result);
+        setShowModal(true);
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : String(err));
+      }
+    },
+  });
+
+  function CampaignFields({ values }: { values: CampaignFormValues }) {
+    const { balance: walletBalance, loading: balanceLoading } =
+      useWalletTokenBalance(values.mint.trim() || null);
+
+    const { blocking, warnings } = collectCampaignFormErrors(values, {
+      walletBalance,
+      nowSec: clusterNowSec ?? undefined,
+    });
+    const validationError = blocking[0];
+    const formWarnings = warnings;
+    const startTooSoon = isStartTooSoon(values, clusterNowSec ?? undefined);
+
+    const schedulePreview = (() => {
+      try {
+        const start = fromDatetimeLocal(values.start);
+        const end = fromDatetimeLocal(values.end);
+        return `${formatScheduleLocal(start)} → ${formatScheduleLocal(end)}`;
+      } catch {
+        return null;
+      }
+    })();
+
+    return (
+      <>
         <div className="grid gap-4 lg:grid-cols-2">
           <label className={`${labelClassName()} lg:col-span-2`}>
             <span className="font-medium">Distribution token</span>
@@ -123,7 +114,7 @@ export function InitializeCampaign({
                   <button
                     key={token.mint}
                     type="button"
-                    onClick={() => setField("mint", token.mint)}
+                    onClick={() => form.setFieldValue("mint", token.mint)}
                     className={`rounded-lg border px-3 py-1.5 text-xs font-mono transition cursor-pointer ${
                       values.mint === token.mint
                         ? "border-accent/50 bg-accent/10 text-accent"
@@ -135,133 +126,218 @@ export function InitializeCampaign({
                 ))}
               </div>
             )}
-            <input
-              type="text"
-              value={values.mint}
-              onChange={(e) => setField("mint", e.target.value)}
-              placeholder="SPL token mint address"
-              className={`${fieldClassName()} font-mono text-xs`}
-              spellCheck={false}
-            />
+            <form.Field name="mint">
+              {(field) => (
+                <input
+                  type="text"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="SPL token mint address"
+                  className={`${fieldClassName()} font-mono text-xs`}
+                  spellCheck={false}
+                />
+              )}
+            </form.Field>
             <span className="text-xs text-muted">
               {balanceLoading
                 ? "Checking wallet balance…"
                 : walletBalance != null
-                  ? `Your balance: ${formatTokens(Number(walletBalance))} raw units`
+                  ? `Your balance: ${formatTokens(walletBalance)} tokens`
                   : "Enter a mint to see your ATA balance"}
             </span>
           </label>
 
           <label className={labelClassName()}>
-            <span className="font-medium">Campaign deposit (raw units)</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={values.totalDeposit}
-              onChange={(e) => setField("totalDeposit", e.target.value)}
-              className={fieldClassName()}
-            />
+            <span className="font-medium">Campaign deposit (tokens)</span>
+            <div className="flex gap-2">
+              <form.Field name="totalDeposit">
+                {(field) => (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    className={fieldClassName()}
+                  />
+                )}
+              </form.Field>
+              {walletBalance != null && walletBalance > 0n && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    form.setFieldValue(
+                      "totalDeposit",
+                      String(rawToTokens(walletBalance)),
+                    )
+                  }
+                  className="shrink-0 rounded-lg border border-border-low px-3 py-2 text-xs transition hover:border-accent/30 cursor-pointer"
+                >
+                  Use max
+                </button>
+              )}
+            </div>
             <span className="text-xs text-muted">
-              Default {formatTokens(Number(DEFAULT_CAMPAIGN_DEPOSIT))} per
-              campaign.
+              Default {formatTokenCount(DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)} tokens
+              per campaign — must not exceed your wallet balance.
             </span>
           </label>
 
           <label className={`${labelClassName()} lg:col-span-2`}>
             <span className="font-medium">Merkle root (hex)</span>
-            <input
-              type="text"
-              value={values.merkleRootHex}
-              onChange={(e) => setField("merkleRootHex", e.target.value)}
-              className={`${fieldClassName()} font-mono text-xs`}
-              spellCheck={false}
-            />
+            <form.Field name="merkleRootHex">
+              {(field) => (
+                <input
+                  type="text"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  className={`${fieldClassName()} font-mono text-xs`}
+                  spellCheck={false}
+                />
+              )}
+            </form.Field>
           </label>
 
           <label className={labelClassName()}>
             <span className="font-medium">Start (claims open)</span>
-            <input
-              type="datetime-local"
-              value={values.start}
-              onChange={(e) => setField("start", e.target.value)}
-              className={fieldClassName()}
-            />
+            <form.Field name="start">
+              {(field) => (
+                <input
+                  type="datetime-local"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  className={fieldClassName()}
+                />
+              )}
+            </form.Field>
           </label>
 
           <label className={labelClassName()}>
             <span className="font-medium">End (vesting completes)</span>
-            <input
-              type="datetime-local"
-              value={values.end}
-              onChange={(e) => setField("end", e.target.value)}
-              className={fieldClassName()}
-            />
+            <form.Field name="end">
+              {(field) => (
+                <input
+                  type="datetime-local"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  className={fieldClassName()}
+                />
+              )}
+            </form.Field>
           </label>
+
+          {schedulePreview && (
+            <p className="text-xs text-muted lg:col-span-2">
+              Schedule (your local time): {schedulePreview}
+            </p>
+          )}
 
           <label className={labelClassName()}>
             <span className="font-medium">Cliff (days)</span>
-            <input
-              type="number"
-              min={0}
-              value={values.cliffDays}
-              onChange={(e) => setField("cliffDays", Number(e.target.value))}
-              className={fieldClassName()}
-            />
+            <form.Field name="cliffDays">
+              {(field) => (
+                <input
+                  type="number"
+                  min={0}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) =>
+                    field.handleChange(Number(e.target.value) || 0)
+                  }
+                  className={fieldClassName()}
+                />
+              )}
+            </form.Field>
           </label>
 
           <label className={labelClassName()}>
             <span className="font-medium">Cliff release (bps)</span>
-            <input
-              type="number"
-              min={0}
-              max={10_000}
-              value={values.cliffReleaseBps}
-              onChange={(e) =>
-                setField("cliffReleaseBps", Number(e.target.value))
-              }
-              className={fieldClassName()}
-            />
+            <form.Field name="cliffReleaseBps">
+              {(field) => (
+                <input
+                  type="number"
+                  min={0}
+                  max={10_000}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) =>
+                    field.handleChange(Number(e.target.value) || 0)
+                  }
+                  className={fieldClassName()}
+                />
+              )}
+            </form.Field>
           </label>
 
           <label className={labelClassName()}>
             <span className="font-medium">Grace period (days)</span>
-            <input
-              type="number"
-              min={1}
-              value={values.graceDays}
-              onChange={(e) => setField("graceDays", Number(e.target.value))}
-              className={fieldClassName()}
-            />
+            <form.Field name="graceDays">
+              {(field) => (
+                <input
+                  type="number"
+                  min={1}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) =>
+                    field.handleChange(Number(e.target.value) || 1)
+                  }
+                  className={fieldClassName()}
+                />
+              )}
+            </form.Field>
           </label>
 
-          <label className={`${labelClassName()} flex items-center gap-2 pt-6`}>
-            <input
-              type="checkbox"
-              checked={values.isTransferable}
-              onChange={(e) => setField("isTransferable", e.target.checked)}
-              className="h-4 w-4 rounded border-border-low accent-accent"
-            />
-            <span className="font-medium">Positions transferable at launch</span>
-          </label>
+          <form.Field name="isTransferable">
+            {(field) => (
+              <label
+                className={`${labelClassName()} flex items-center gap-2 pt-6`}
+              >
+                <input
+                  type="checkbox"
+                  checked={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.checked)}
+                  className="h-4 w-4 rounded border-border-low accent-accent"
+                />
+                <span className="font-medium">
+                  Positions transferable at launch
+                </span>
+              </label>
+            )}
+          </form.Field>
 
           <label className={labelClassName()}>
             <span className="font-medium">Collection name</span>
-            <input
-              type="text"
-              value={values.name}
-              onChange={(e) => setField("name", e.target.value)}
-              className={fieldClassName()}
-            />
+            <form.Field name="name">
+              {(field) => (
+                <input
+                  type="text"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  className={fieldClassName()}
+                />
+              )}
+            </form.Field>
           </label>
 
           <label className={labelClassName()}>
             <span className="font-medium">Collection URI</span>
-            <input
-              type="url"
-              value={values.uri}
-              onChange={(e) => setField("uri", e.target.value)}
-              className={fieldClassName()}
-            />
+            <form.Field name="uri">
+              {(field) => (
+                <input
+                  type="url"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  className={fieldClassName()}
+                />
+              )}
+            </form.Field>
           </label>
         </div>
 
@@ -271,34 +347,89 @@ export function InitializeCampaign({
           </p>
         )}
 
-        {insufficientBalance && (
-          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-            Deposit exceeds your wallet balance. Mint more tokens or lower the
-            campaign deposit.
-          </p>
+        {formWarnings.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            <ul className="list-disc space-y-1 pl-4">
+              {formWarnings.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+            {startTooSoon && (
+              <button
+                type="button"
+                onClick={() => form.reset(applyDefaultSchedule(values))}
+                className="rounded-md border border-amber-400/40 px-2.5 py-1 text-xs transition hover:bg-amber-500/20 cursor-pointer"
+              >
+                Reset schedule (start tomorrow, 30-day vesting)
+              </button>
+            )}
+          </div>
         )}
 
-        {error && (
-          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            {error}
-          </p>
-        )}
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {(isSubmitting) => (
+            <>
+              {validationError && (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                  {validationError}
+                </p>
+              )}
 
-        <button
-          type="button"
-          onClick={() => void initialize(values)}
-          disabled={!canInitialize || isSending || insufficientBalance}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-        >
-          {isSending ? progress ?? "Confirm in wallet…" : "Initialize campaign"}
-        </button>
-      </div>
+              {submitError && (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                  {submitError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={
+                  status !== "connected" ||
+                  balanceLoading ||
+                  blocking.length > 0 ||
+                  warnings.length > 0 ||
+                  isSubmitting
+                }
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmitting ? "Confirm in wallet…" : "Initialize campaign"}
+              </button>
+            </>
+          )}
+        </form.Subscribe>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <form
+        className="space-y-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          void form.handleSubmit();
+        }}
+      >
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">Launch a campaign</h3>
+          <p className="max-w-2xl text-sm text-muted">
+            Deposit a portion of your token supply into a new vesting campaign.
+            Create the token first in the Token tab if you have not minted a
+            supply yet.
+          </p>
+        </div>
+
+        <form.Subscribe selector={(state) => state.values}>
+          {(values) => <CampaignFields values={values} />}
+        </form.Subscribe>
+      </form>
 
       <CampaignSuccessModal
         result={showModal ? lastResult : null}
         onClose={() => {
           setShowModal(false);
-          clearResult();
+          setLastResult(null);
         }}
         onViewCampaign={(campaign) => {
           onViewCampaign?.(campaign);

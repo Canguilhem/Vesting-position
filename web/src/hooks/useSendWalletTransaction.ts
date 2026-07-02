@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { useSendTransaction, useWalletConnection } from "@solana/react-hooks";
 import {
-  buildInstructionsWithWallet,
   requireWalletSigner,
   walletSendPayload,
   type WalletInstructionBuilder,
@@ -17,16 +16,9 @@ export function useSendWalletTransaction() {
   const { send, isSending, signature, error, reset } = useSendTransaction();
 
   const sendWithWallet = useCallback(
-    async (
-      label: string,
-      build: WalletInstructionBuilder,
-    ): Promise<string> => {
+    async (build: WalletInstructionBuilder): Promise<string> => {
       const walletSigner = requireWalletSigner(wallet, status);
-      const instructions = await buildInstructionsWithWallet(
-        walletSigner,
-        label,
-        build,
-      );
+      const instructions = await build(walletSigner);
       const sig = await send(walletSendPayload(walletSigner, instructions));
       return String(sig);
     },

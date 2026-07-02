@@ -61,8 +61,15 @@ export function computeVesting({
   };
 }
 
-export function formatTokens(raw: number, decimals = 6): string {
-  const value = raw / 10 ** decimals;
+/** Default SPL decimals for demo tokens and campaign forms. */
+export const DEFAULT_DISPLAY_DECIMALS = 6;
+
+export function formatTokens(
+  raw: number | bigint,
+  decimals = DEFAULT_DISPLAY_DECIMALS,
+): string {
+  const value =
+    typeof raw === "bigint" ? Number(raw) / 10 ** decimals : raw / 10 ** decimals;
   return value.toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
@@ -71,4 +78,24 @@ export function formatTokens(raw: number, decimals = 6): string {
 
 export function formatPercent(bps: number): string {
   return `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 1)}%`;
+}
+
+/** SPL base units → display tokens (integer part when converting form input). */
+export function tokensToRaw(
+  tokens: bigint,
+  decimals = DEFAULT_DISPLAY_DECIMALS,
+): bigint {
+  return tokens * 10n ** BigInt(decimals);
+}
+
+export function rawToTokens(
+  raw: bigint,
+  decimals = DEFAULT_DISPLAY_DECIMALS,
+): bigint {
+  return raw / 10n ** BigInt(decimals);
+}
+
+export function formatTokenCount(tokens: number | bigint): string {
+  const value = typeof tokens === "bigint" ? tokens : BigInt(tokens);
+  return value.toLocaleString();
 }

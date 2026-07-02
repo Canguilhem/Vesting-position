@@ -1,74 +1,68 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { address } from "@solana/addresses";
+import { useSolanaClient } from "@solana/react-hooks";
+import { address, type Address } from "@solana/addresses";
 import {
-  buildInitializeInstructions,
+  accountExists,
+  buildInitializeInstruction,
   parseProgramError,
   previewInitializeAddresses,
 } from "../solana/vesting-positions";
 import {
-  campaignFormToParams,
-  validateCampaignForm,
   type CampaignFormValues,
   type InitializeResult,
+  campaignFormToParams,
 } from "../lib/initialize";
-import { useSendWalletTransaction } from "./useSendWalletTransaction";
-import { requireWalletSigner } from "../solana/wallet-transaction";
 import { invalidateAfterOnChainWrite } from "../lib/invalidate-on-chain-queries";
+import { useSendWalletTransaction } from "./useSendWalletTransaction";
 
 function explorerTxUrl(signature: string): string {
   return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
 }
 
+function toSubmitError(err: unknown): Error {
+  if (err instanceof Error) return err;
+  return new Error(parseProgramError(err));
+}
+
+/**
+ * On-chain initialize flow. Throws on failure — TanStack Form owns submit/error UI state.
+ */
 export function useInitialize() {
+  const client = useSolanaClient();
   const queryClient = useQueryClient();
-  const {
-    sendWithWallet,
-    isSending,
-    signature,
-    error,
-    reset,
-    isConnected,
-    wallet,
-    status,
-  } = useSendWalletTransaction();
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<InitializeResult | null>(null);
+  const { sendWithWallet, reset } = useSendWalletTransaction();
 
   const initialize = useCallback(
-    async (values: CampaignFormValues): Promise<InitializeResult | null> => {
-      if (!isConnected) {
-        setLocalError("Connect a wallet first");
-        return null;
-      }
-
-      const validationError = validateCampaignForm(values);
-      if (validationError) {
-        setLocalError(validationError);
-        return null;
-      }
-
-      setLocalError(null);
-      setLastResult(null);
-      setProgress(null);
+    async (values: CampaignFormValues): Promise<InitializeResult> => {
       reset();
 
       try {
         const formParams = campaignFormToParams(values);
         const mint = address(formParams.mint);
-        const creatorAddress = requireWalletSigner(wallet, status).address;
+        let campaign!: Address;
+        let collection!: Address;
+        let walletAddress!: string;
 
-        const { campaign, collection } = await previewInitializeAddresses({
-          creatorAddress,
-          mint,
-          merkleRoot: formParams.merkleRoot,
-        });
+        const sig = await sendWithWallet(async (walletSigner) => {
+          walletAddress = String(walletSigner.address);
 
-        setProgress("Initializing campaign…");
+          const preview = await previewInitializeAddresses({
+            creatorAddress: walletSigner.address,
+            mint,
+            merkleRoot: formParams.merkleRoot,
+          });
+          campaign = preview.campaign;
+          collection = preview.collection;
 
-        const sig = await sendWithWallet("initialize", (walletSigner) =>
-          buildInitializeInstructions({
+          if (await accountExists(client.runtime.rpc, campaign)) {
+            throw new Error(
+              `Campaign already initialized at ${String(campaign)} for this token and merkle root. ` +
+                "Check the Campaigns tab, or use a different merkle root to create another.",
+            );
+          }
+
+          const initIx = await buildInitializeInstruction({
             creator: walletSigner,
             mint,
             merkleRoot: formParams.merkleRoot,
@@ -81,8 +75,10 @@ export function useInitialize() {
             totalDeposit: formParams.totalDeposit,
             name: formParams.name,
             uri: formParams.uri,
-          }),
-        );
+          });
+
+          return [initIx];
+        });
 
         const result: InitializeResult = {
           campaign,
@@ -93,27 +89,14 @@ export function useInitialize() {
           initializeExplorerUrl: explorerTxUrl(sig),
         };
 
-        setProgress(null);
-        setLastResult(result);
-        invalidateAfterOnChainWrite(queryClient, String(creatorAddress));
+        invalidateAfterOnChainWrite(queryClient, walletAddress);
         return result;
       } catch (err) {
-        setProgress(null);
-        setLocalError(parseProgramError(err));
-        return null;
+        throw toSubmitError(err);
       }
     },
-    [isConnected, reset, sendWithWallet, wallet, status, queryClient],
+    [reset, sendWithWallet, queryClient, client],
   );
 
-  return {
-    initialize,
-    isSending,
-    progress,
-    lastResult,
-    clearResult: () => setLastResult(null),
-    signature,
-    error: localError ?? error,
-    canInitialize: isConnected,
-  };
+  return { initialize };
 }

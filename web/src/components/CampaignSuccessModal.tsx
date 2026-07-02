@@ -58,7 +58,7 @@ export function CampaignSuccessModal({
             Campaign initialized
           </h3>
           <p className="text-sm text-muted">
-            Deposited {formatTokens(Number(result.totalDeposit))} raw units.
+            Deposited {formatTokens(result.totalDeposit)} tokens.
             Recipients can claim after the start time if they are on the
             allowlist.
           </p>

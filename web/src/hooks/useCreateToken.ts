@@ -2,17 +2,20 @@ import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Address } from "@solana/addresses";
 import { generateKeyPairSigner } from "@solana/signers";
-import { buildMintSetupTransactionInstructions } from "../solana/vesting-positions";
-import { parseProgramError } from "../solana/vesting-positions";
+import {
+  buildMintSetupTransactionInstructions,
+  parseProgramError,
+} from "../solana/vesting-positions";
 import { saveToken, type SavedToken } from "../lib/token-registry";
+import {
+  parseCreateTokenSupply,
+  validateCreateTokenForm,
+  type CreateTokenFormValues,
+} from "../lib/create-token";
 import { useSendWalletTransaction } from "./useSendWalletTransaction";
 import { invalidateAfterOnChainWrite } from "../lib/invalidate-on-chain-queries";
 
-export type CreateTokenFormValues = {
-  decimals: number;
-  supply: string;
-  label: string;
-};
+export type { CreateTokenFormValues } from "../lib/create-token";
 
 export type CreateTokenResult = {
   mint: Address;
@@ -24,19 +27,6 @@ export type CreateTokenResult = {
 
 function explorerTxUrl(signature: string): string {
   return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
-}
-
-function validateCreateTokenForm(values: CreateTokenFormValues): string | null {
-  if (values.decimals < 0 || values.decimals > 9) {
-    return "Decimals must be between 0 and 9";
-  }
-  try {
-    const supply = BigInt(values.supply);
-    if (supply <= 0n) return "Supply must be greater than zero";
-  } catch {
-    return "Supply must be a whole number of raw token units";
-  }
-  return null;
 }
 
 export function useCreateToken() {
@@ -65,9 +55,9 @@ export function useCreateToken() {
 
       try {
         const mintSigner = await generateKeyPairSigner();
-        const supply = BigInt(values.supply);
+        const supply = parseCreateTokenSupply(values);
 
-        const sig = await sendWithWallet("create-token", (walletSigner) =>
+        const sig = await sendWithWallet((walletSigner) =>
           buildMintSetupTransactionInstructions({
             authority: walletSigner,
             mintSigner,
@@ -87,7 +77,7 @@ export function useCreateToken() {
         const saved: SavedToken = {
           mint: String(result.mint),
           decimals: values.decimals,
-          supply: values.supply,
+          supply: String(supply),
           signature: result.signature,
           label: values.label.trim() || undefined,
           createdAt: Date.now(),
@@ -118,5 +108,9 @@ export function useCreateToken() {
     error: localError ?? error,
     canCreate: isConnected,
     clearResult: () => setLastResult(null),
+    clearError: () => {
+      setLocalError(null);
+      reset();
+    },
   };
 }

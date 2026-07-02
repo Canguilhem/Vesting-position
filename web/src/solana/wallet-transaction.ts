@@ -1,7 +1,7 @@
 import type { WalletSession } from "@solana/client";
 import type { Instruction, TransactionSigner } from "@solana/kit";
 import { COMPUTE_UNIT_LIMIT_MULTIPLIER } from "./constants";
-import { debugInstructionSigners, getConnectedWalletSigner } from "./wallet-signer";
+import { getConnectedWalletSigner } from "./wallet-signer";
 
 /**
  * Kit requires one {@link TransactionSigner} instance per address in a transaction.
@@ -27,16 +27,6 @@ export function requireWalletSigner(
   return getConnectedWalletSigner(wallet);
 }
 
-export async function buildInstructionsWithWallet(
-  walletSigner: TransactionSigner,
-  label: string,
-  build: WalletInstructionBuilder,
-): Promise<readonly Instruction[]> {
-  const instructions = await build(walletSigner);
-  debugInstructionSigners(label, instructions);
-  return instructions;
-}
-
 export function walletSendPayload(
   walletSigner: TransactionSigner,
   instructions: readonly Instruction[],
@@ -57,4 +47,4 @@ export function walletSendPayload(
   };
 }
 
-export { getConnectedWalletSigner, debugInstructionSigners } from "./wallet-signer";
+export { getConnectedWalletSigner } from "./wallet-signer";

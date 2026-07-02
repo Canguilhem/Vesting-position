@@ -9,7 +9,12 @@
  * @see https://www.solanakit.com/docs/plugins/generating-program-plugins
  */
 import { address, type Address } from "@solana/addresses";
-import { assertAccountExists, lamports, type Instruction, type TransactionSigner } from "@solana/kit";
+import {
+  assertAccountExists,
+  lamports,
+  type Instruction,
+  type TransactionSigner,
+} from "@solana/kit";
 import type { SolanaClient } from "@solana/client";
 import {
   CAMPAIGN_DISCRIMINATOR,
@@ -24,10 +29,12 @@ import { findClaimReceiptPda } from "../generated/vesting-positions/src/generate
 import { findCollectionPda } from "../generated/vesting-positions/src/generated/pdas/collection";
 import { VESTING_POSITIONS_PROGRAM_ADDRESS } from "../generated/vesting-positions/src/generated/programs/vestingPositions";
 import { MPL_CORE_PROGRAM_ADDRESS } from "./constants";
+import { buildMintSetupInstructions, type KeyPairSigner } from "./mint-setup";
 import {
-  buildMintSetupInstructions,
-  type KeyPairSigner,
-} from "./mint-setup";
+  decodeCustomProgramErrorMessage,
+  parseSimulationLogs,
+} from "../lib/program-errors";
+import { PROGRAM_ID } from "../config";
 import { findAssetPda } from "./pdas";
 
 export type CampaignData = {
@@ -68,7 +75,7 @@ function toCampaignData(campaign: Campaign): CampaignData {
 type AppRpc = SolanaClient["runtime"]["rpc"];
 
 export async function fetchAllCampaigns(
-  rpc: AppRpc,
+  rpc: AppRpc
 ): Promise<CampaignRecord[]> {
   type ProgramAccount = {
     pubkey: Address;
@@ -117,14 +124,17 @@ export async function fetchAllCampaigns(
 }
 
 export async function fetchSortedCampaigns(
-  rpc: AppRpc,
+  rpc: AppRpc
 ): Promise<CampaignRecord[]> {
   const records = await fetchAllCampaigns(rpc);
   records.sort((a, b) => b.account.start - a.account.start);
   return records;
 }
 
-export async function accountExists(rpc: AppRpc, addr: Address): Promise<boolean> {
+export async function accountExists(
+  rpc: AppRpc,
+  addr: Address
+): Promise<boolean> {
   const info = await rpc.getAccountInfo(addr, { encoding: "base64" }).send();
   return info.value != null && info.value.data.length > 0;
 }
@@ -158,9 +168,9 @@ export async function previewInitializeAddresses(params: {
   return { collection, campaign };
 }
 
-export async function buildInitializeInstructions(
-  params: InitializeParams,
-): Promise<Instruction[]> {
+export async function buildInitializeInstruction(
+  params: InitializeParams
+): Promise<Instruction> {
   const {
     creator,
     mint,
@@ -176,12 +186,12 @@ export async function buildInitializeInstructions(
     uri,
   } = params;
 
-  const initializeIx = await getInitializeInstructionAsync({
+  return getInitializeInstructionAsync({
     creator,
     mint,
     merkleRoot,
-    start,
-    end,
+    start: BigInt(start),
+    end: BigInt(end),
     cliffDuration,
     cliffReleaseBps,
     mintToDistribute: mint,
@@ -192,8 +202,6 @@ export async function buildInitializeInstructions(
     uri,
     mplCoreProgram: MPL_CORE_PROGRAM_ADDRESS,
   });
-
-  return [initializeIx];
 }
 
 export async function buildMintSetupTransactionInstructions(params: {
@@ -212,19 +220,7 @@ export async function buildMintSetupTransactionInstructions(params: {
   return setup;
 }
 
-export async function buildLaunchCampaignInstructions(params: {
-  creator: TransactionSigner;
-  mint: Address;
-  initialize: Omit<InitializeParams, "creator" | "mint">;
-}): Promise<Instruction[]> {
-  return buildInitializeInstructions({
-    creator: params.creator,
-    mint: params.mint,
-    ...params.initialize,
-  });
-}
-
-export async function buildClaimInstructions(params: {
+export async function buildClaimInstruction(params: {
   user: TransactionSigner;
   campaignAddress: Address;
   campaign: CampaignData;
@@ -233,7 +229,7 @@ export async function buildClaimInstructions(params: {
   allocation?: bigint;
   name?: string;
   uri?: string;
-}): Promise<Instruction[]> {
+}): Promise<Instruction> {
   const {
     user,
     campaignAddress,
@@ -250,27 +246,24 @@ export async function buildClaimInstructions(params: {
     user: user.address,
   });
 
-  const claimIx = await getClaimInstructionAsync({
+  return getClaimInstructionAsync({
     user,
     collection: campaign.collection,
     campaign: campaignAddress,
     mint: campaign.mintToDistribute,
     asset,
     proofs: isFirstClaim ? (proofs ?? null) : null,
-    allocation:
-      isFirstClaim && allocation != null ? allocation : null,
+    allocation: isFirstClaim && allocation != null ? allocation : null,
     name,
     uri,
     mplCoreProgram: MPL_CORE_PROGRAM_ADDRESS,
   });
-
-  return [claimIx];
 }
 
 export async function getUserClaimState(
   rpc: AppRpc,
   campaignAddress: Address,
-  userAddress: Address,
+  userAddress: Address
 ) {
   const [claimReceipt] = await findClaimReceiptPda({
     campaign: campaignAddress,
@@ -299,18 +292,36 @@ export function parseProgramError(error: unknown): string {
   const planError = extractTransactionPlanError(error);
   if (planError) return planError;
 
+  const logs = extractAllSimulationLogs(error);
+  if (logs.length > 0) {
+    const fromLogs = parseSimulationLogs(logs, PROGRAM_ID);
+    if (fromLogs) return fromLogs;
+  }
+
   if (error instanceof Error) {
     if ("cause" in error && error.cause) {
       const nested = parseProgramError(error.cause);
       if (nested !== String(error.cause)) return nested;
     }
-    const match = error.message.match(/Error Code: (\w+)/);
-    if (match) return match[1].replace(/([A-Z])/g, " $1").trim();
-    const logs = extractSimulationLogs(error);
-    if (logs) return logs;
+    const decoded = decodeCustomProgramErrorMessage(error.message);
+    if (decoded) return decoded;
+    if (logs.length > 0) {
+      const programLog = [...logs]
+        .reverse()
+        .find(
+          (line) =>
+            line.includes("Error") ||
+            line.includes("failed") ||
+            line.includes("custom program error")
+        );
+      return programLog ?? logs.at(-1) ?? error.message;
+    }
     return error.message;
   }
-  return String(error);
+
+  const text = String(error);
+  const decoded = decodeCustomProgramErrorMessage(text);
+  return decoded ?? text;
 }
 
 type TransactionPlanResult = {
@@ -323,8 +334,9 @@ type TransactionPlanResult = {
 function extractTransactionPlanError(error: unknown): string | null {
   if (!error || typeof error !== "object") return null;
 
-  const planResult = (error as { transactionPlanResult?: TransactionPlanResult })
-    .transactionPlanResult;
+  const planResult = (
+    error as { transactionPlanResult?: TransactionPlanResult }
+  ).transactionPlanResult;
   if (planResult) {
     const inner = findFailedPlanError(planResult);
     if (inner) return parseProgramError(inner);
@@ -344,27 +356,30 @@ function findFailedPlanError(plan: TransactionPlanResult): unknown {
   return null;
 }
 
-function extractSimulationLogs(error: unknown): string | null {
-  if (!error || typeof error !== "object") return null;
-  const context = (error as { context?: { logs?: string[]; __code?: number } })
-    .context;
-  const logs = context?.logs;
-  if (!logs?.length) return null;
+function extractAllSimulationLogs(error: unknown): string[] {
+  if (!error || typeof error !== "object") return [];
 
-  const programLog = [...logs]
-    .reverse()
-    .find(
-      (line) =>
-        line.includes("Error") ||
-        line.includes("failed") ||
-        line.includes("custom program error"),
-    );
-  return programLog ?? logs.at(-1) ?? null;
+  const context = (error as { context?: { logs?: string[] } }).context;
+  if (context?.logs?.length) return context.logs;
+
+  const cause = (error as { cause?: unknown }).cause;
+  if (cause) return extractAllSimulationLogs(cause);
+
+  const planResult = (
+    error as { transactionPlanResult?: TransactionPlanResult }
+  ).transactionPlanResult;
+  if (planResult) {
+    const failed = findFailedPlanError(planResult);
+    if (failed) return extractAllSimulationLogs(failed);
+  }
+
+  return [];
 }
 
-export { getConnectedWalletSigner, debugInstructionSigners } from "./wallet-signer";
 export {
-  buildInstructionsWithWallet,
+  getConnectedWalletSigner,
+} from "./wallet-signer";
+export {
   requireWalletSigner,
   walletSendPayload,
   type WalletInstructionBuilder,

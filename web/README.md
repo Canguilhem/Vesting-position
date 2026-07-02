@@ -55,16 +55,16 @@ We use the **standalone helpers** today with framework-kit's `useSendTransaction
 Kit requires **one signer object per address** in a transaction. Every send path uses `useSendWalletTransaction`:
 
 ```ts
-await sendWithWallet("claim", (walletSigner) =>
-  buildClaimInstructions({ user: walletSigner, /* … */ }),
-);
+await sendWithWallet(async (walletSigner) => [
+  await buildClaimInstruction({ user: walletSigner, /* … */ }),
+]);
 // internally: feePayer is the same walletSigner instance
 ```
 
 | File | Role |
 | ---- | ---- |
 | `src/solana/wallet-signer.ts` | `getConnectedWalletSigner()` |
-| `src/solana/wallet-transaction.ts` | `requireWalletSigner`, `buildInstructionsWithWallet`, `walletSendPayload` |
+| `src/solana/wallet-transaction.ts` | `requireWalletSigner`, `walletSendPayload` |
 | `src/hooks/useSendWalletTransaction.ts` | Shared hook wrapping `useSendTransaction` |
 
 When adding a new instruction builder, pass `TransactionSigner` for wallet-owned accounts — never `createNoopSigner(address)` plus a separate `authority: wallet` on send.

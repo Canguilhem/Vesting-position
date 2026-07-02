@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSolanaClient } from "@solana/react-hooks";
 import {
-  buildClaimInstructions,
+  buildClaimInstruction,
   getUserClaimState,
   parseProgramError,
   type CampaignData,
@@ -42,7 +42,7 @@ export function useClaim(campaignAddress: Address, campaign: CampaignData) {
     try {
       let walletForInvalidation: string | undefined;
 
-      await sendWithWallet("claim", async (walletSigner) => {
+      await sendWithWallet(async (walletSigner) => {
         const userAddress = walletSigner.address;
         walletForInvalidation = String(userAddress);
         const { isFirstClaim } = await getUserClaimState(
@@ -72,14 +72,16 @@ export function useClaim(campaignAddress: Address, campaign: CampaignData) {
           allocation = merkle.allocation;
         }
 
-        return buildClaimInstructions({
-          user: walletSigner,
-          campaignAddress,
-          campaign,
-          isFirstClaim,
-          proofs,
-          allocation,
-        });
+        return [
+          await buildClaimInstruction({
+            user: walletSigner,
+            campaignAddress,
+            campaign,
+            isFirstClaim,
+            proofs,
+            allocation,
+          }),
+        ];
       });
 
       if (walletForInvalidation) {

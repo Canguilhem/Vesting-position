@@ -1,20 +1,14 @@
-import { useState } from "react";
+import { useForm } from "@tanstack/react-form";
 import type { Address } from "@solana/addresses";
 import { useWalletConnection } from "@solana/react-hooks";
 import {
-  DEFAULT_TOKEN_SUPPLY,
-  DEFAULT_CAMPAIGN_DEPOSIT,
+  DEFAULT_CAMPAIGN_DEPOSIT_TOKENS,
+  DEFAULT_TOKEN_SUPPLY_TOKENS,
 } from "../lib/initialize";
-import { formatTokens } from "../lib/vesting";
+import { createDefaultCreateTokenFormValues } from "../lib/create-token";
+import { formatTokenCount, formatTokens } from "../lib/vesting";
 import { useCreateToken } from "../hooks/useCreateToken";
-
-function fieldClassName(): string {
-  return "w-full rounded-lg border border-border-low bg-background/60 px-3 py-2 text-sm outline-none transition focus:border-accent/40";
-}
-
-function labelClassName(): string {
-  return "block space-y-1.5 text-sm";
-}
+import { fieldClassName, labelClassName } from "./form-styles";
 
 export function CreateTokenPanel({
   onLaunchWithMint,
@@ -22,69 +16,112 @@ export function CreateTokenPanel({
   onLaunchWithMint?: (mint: Address) => void;
 }) {
   const { status } = useWalletConnection();
-  const { createToken, isSending, lastResult, error, canCreate, clearResult } =
-    useCreateToken();
+  const {
+    createToken,
+    isSending,
+    lastResult,
+    error,
+    canCreate,
+    clearResult,
+    clearError,
+  } = useCreateToken();
 
-  const [decimals, setDecimals] = useState(6);
-  const [supply, setSupply] = useState(String(DEFAULT_TOKEN_SUPPLY));
-  const [label, setLabel] = useState("Vesting token");
-
-  const campaignCount =
-    BigInt(supply || "0") > 0n && DEFAULT_CAMPAIGN_DEPOSIT > 0n
-      ? Number(BigInt(supply) / DEFAULT_CAMPAIGN_DEPOSIT)
-      : 0;
+  const form = useForm({
+    defaultValues: createDefaultCreateTokenFormValues(),
+    onSubmit: async ({ value }) => {
+      await createToken(value);
+    },
+  });
 
   return (
-    <div className="space-y-6">
+    <form
+      className="space-y-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearError();
+        void form.handleSubmit();
+      }}
+    >
       <div className="space-y-2">
         <h3 className="text-lg font-semibold">Create distribution token</h3>
         <p className="max-w-2xl text-sm text-muted">
           Mint a fresh SPL token to your wallet once, then launch multiple
           campaigns that each deposit a slice of the supply. Example: mint{" "}
-          {formatTokens(Number(DEFAULT_TOKEN_SUPPLY))} units, then run up to{" "}
-          {Number(DEFAULT_TOKEN_SUPPLY / DEFAULT_CAMPAIGN_DEPOSIT)} campaigns at{" "}
-          {formatTokens(Number(DEFAULT_CAMPAIGN_DEPOSIT))} each.
+          {formatTokenCount(DEFAULT_TOKEN_SUPPLY_TOKENS)} tokens, then run up to{" "}
+          {Number(DEFAULT_TOKEN_SUPPLY_TOKENS / DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)}{" "}
+          campaigns at {formatTokenCount(DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)} each.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={labelClassName()}>
           <span className="font-medium">Token label (local)</span>
-          <input
-            type="text"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            className={fieldClassName()}
-            placeholder="My project token"
-          />
+          <form.Field name="label">
+            {(field) => (
+              <input
+                type="text"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(e) => field.handleChange(e.target.value)}
+                className={fieldClassName()}
+                placeholder="My project token"
+              />
+            )}
+          </form.Field>
         </label>
 
         <label className={labelClassName()}>
           <span className="font-medium">Decimals</span>
-          <input
-            type="number"
-            min={0}
-            max={9}
-            value={decimals}
-            onChange={(e) => setDecimals(Number(e.target.value))}
-            className={fieldClassName()}
-          />
+          <form.Field name="decimals">
+            {(field) => (
+              <input
+                type="number"
+                min={0}
+                max={9}
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(e) =>
+                  field.handleChange(Number(e.target.value) || 0)
+                }
+                className={fieldClassName()}
+              />
+            )}
+          </form.Field>
         </label>
 
         <label className={`${labelClassName()} sm:col-span-2`}>
-          <span className="font-medium">Total supply (raw units)</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={supply}
-            onChange={(e) => setSupply(e.target.value)}
-            className={fieldClassName()}
-          />
-          <span className="text-xs text-muted">
-            Minted entirely to your wallet ATA. At{" "}
-            {formatTokens(Number(DEFAULT_CAMPAIGN_DEPOSIT))} per campaign, that
-            supports ~{campaignCount} campaign{campaignCount === 1 ? "" : "s"}.
-          </span>
+          <span className="font-medium">Total supply (tokens)</span>
+          <form.Field name="supply">
+            {(field) => (
+              <input
+                type="text"
+                inputMode="numeric"
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(e) => field.handleChange(e.target.value)}
+                className={fieldClassName()}
+              />
+            )}
+          </form.Field>
+          <form.Subscribe selector={(state) => state.values.supply}>
+            {(supply) => {
+              const campaignCount =
+                BigInt(supply || "0") > 0n && DEFAULT_CAMPAIGN_DEPOSIT_TOKENS > 0n
+                  ? Number(
+                      BigInt(supply) / DEFAULT_CAMPAIGN_DEPOSIT_TOKENS,
+                    )
+                  : 0;
+              return (
+                <span className="text-xs text-muted">
+                  Minted entirely to your wallet ATA. At{" "}
+                  {formatTokenCount(DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)} tokens per
+                  campaign, that supports ~{campaignCount} campaign
+                  {campaignCount === 1 ? "" : "s"}.
+                </span>
+              );
+            }}
+          </form.Subscribe>
         </label>
       </div>
 
@@ -105,7 +142,7 @@ export function CreateTokenPanel({
           <p className="text-sm font-medium text-emerald-200">Token created</p>
           <p className="font-mono text-xs break-all">{lastResult.mint}</p>
           <p className="text-xs text-muted">
-            Supply: {formatTokens(Number(lastResult.supply))} ·{" "}
+            Supply: {formatTokens(lastResult.supply)} tokens ·{" "}
             <a
               href={lastResult.explorerUrl}
               target="_blank"
@@ -137,15 +174,12 @@ export function CreateTokenPanel({
       )}
 
       <button
-        type="button"
-        onClick={() =>
-          void createToken({ decimals, supply, label })
-        }
+        type="submit"
         disabled={!canCreate || isSending}
         className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
       >
         {isSending ? "Confirm in wallet…" : "Create token & mint supply"}
       </button>
-    </div>
+    </form>
   );
 }
