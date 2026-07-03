@@ -74,7 +74,7 @@ function PositionCardBody({
 
       {!position.isOriginalRecipient && !position.transferredAway && (
         <p className="text-xs text-sky-200/90">
-          Received via transfer — you hold this position NFT.
+          You hold this position NFT - received by transfer.
         </p>
       )}
 

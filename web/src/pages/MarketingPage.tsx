@@ -7,7 +7,7 @@ const FEATURES = [
   {
     title: "Tradeable positions",
     description:
-      "Each vesting allocation is an mpl-core NFT Asset — transferable, composable, readable by any on-chain program.",
+      "Each vesting allocation is an mpl-core NFT Asset: transferable, composable, readable by any on-chain program.",
   },
   {
     title: "Partial claims",
@@ -17,7 +17,7 @@ const FEATURES = [
   {
     title: "Merkle allowlists",
     description:
-      "Per-recipient allocations in one campaign via Merkle tree — different amounts per wallet, verified on first claim.",
+      "Per-recipient allocations in one campaign via Merkle tree: different amounts per wallet, verified on first claim.",
   },
   {
     title: "Flexible cliffs",
@@ -32,7 +32,7 @@ const FEATURES = [
   {
     title: "Loyalty badges",
     description:
-      "Fully claimed positions freeze permanently — on-chain proof of full vest, forever.",
+      "Fully claimed positions freeze permanently: on-chain proof of full vest, forever.",
   },
 ] as const;
 
@@ -94,9 +94,9 @@ export function MarketingPage() {
           </h1>
           <p className="text-lg leading-relaxed text-muted sm:text-xl">
             Vesting Positions transforms static allocations into mpl-core NFT
-            primitives — transferable, composable with DeFi, and readable
-            without off-chain indexing. Projects get programmable loyalty.
-            Recipients get optionality.
+            primitives, transferable, composable with DeFi, and readable without
+            off-chain indexing. Projects get programmable loyalty. Recipients
+            get optionality.
           </p>
         </div>
 

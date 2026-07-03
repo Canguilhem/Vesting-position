@@ -162,11 +162,11 @@ export function decodeCustomProgramErrorMessage(text: string): string | null {
 function extractAlreadyInUseAddress(logs: string[]): string | null {
   for (const line of logs) {
     const match = line.match(
-      /already in use[\s\S]*?address:\s*([1-9A-HJ-NP-Za-km-z]{32,44})/i,
+      /already in use[\s\S]*?address:\s*([1-9A-HJ-NP-Za-km-z]{32,44})/i
     );
     if (match) return match[1];
     const alt = line.match(
-      /Allocate: account Address \{ address: ([1-9A-HJ-NP-Za-km-z]{32,44})/,
+      /Allocate: account Address \{ address: ([1-9A-HJ-NP-Za-km-z]{32,44})/
     );
     if (alt) return alt[1];
   }
@@ -176,7 +176,7 @@ function extractAlreadyInUseAddress(logs: string[]): string | null {
 /** Prefer simulation logs — avoids mapping SPL Token #1 to vesting error #1. */
 export function parseSimulationLogs(
   logs: string[],
-  vestingProgramId: string,
+  vestingProgramId: string
 ): string | null {
   if (logs.length === 0) return null;
 
@@ -193,7 +193,7 @@ export function parseSimulationLogs(
   }
 
   if (/insufficient funds/i.test(joined)) {
-    return "Insufficient token balance — campaign deposit exceeds your wallet balance for this mint. Click “Use max”.";
+    return "Insufficient token balance: campaign deposit exceeds your wallet balance for this mint. Click “Use max”.";
   }
 
   const vestingFail = [...logs]
@@ -201,11 +201,11 @@ export function parseSimulationLogs(
     .find(
       (line) =>
         line.includes(vestingProgramId) &&
-        /failed: custom program error/i.test(line),
+        /failed: custom program error/i.test(line)
     );
   if (vestingFail) {
     const tokenMatch = vestingFail.match(
-      /custom program error: (0x[0-9a-f]+|#\d+)/i,
+      /custom program error: (0x[0-9a-f]+|#\d+)/i
     );
     if (tokenMatch) {
       const decoded = decodeVestingProgramErrorToken(tokenMatch[1]);
@@ -218,10 +218,10 @@ export function parseSimulationLogs(
     .find(
       (line) =>
         line.includes(TOKEN_PROGRAM_ID) &&
-        /failed: custom program error: 0x1/i.test(line),
+        /failed: custom program error: 0x1/i.test(line)
     );
   if (tokenFail) {
-    return "Insufficient token balance — campaign deposit exceeds your wallet balance for this mint. Click “Use max”.";
+    return "Insufficient token balance: campaign deposit exceeds your wallet balance for this mint. Click “Use max”.";
   }
 
   return null;

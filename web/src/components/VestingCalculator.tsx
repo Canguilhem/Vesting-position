@@ -1,10 +1,5 @@
-import { useMemo } from "react";
 import { useForm } from "@tanstack/react-form";
-import {
-  computeVesting,
-  formatPercent,
-  formatTokens,
-} from "../lib/vesting";
+import { computeVesting, formatPercent, formatTokens } from "../lib/vesting";
 import { fieldClassName, labelClassName } from "./form-styles";
 
 const DAY = 86_400;
@@ -27,8 +22,9 @@ function toInputDate(unixSec: number): string {
 }
 
 function fromInputDate(value: string): number {
-  const match =
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value.trim());
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(
+    value.trim()
+  );
   if (!match) {
     return Math.floor(new Date(value).getTime() / 1000);
   }
@@ -39,7 +35,7 @@ function fromInputDate(value: string): number {
   const minute = Number(match[5]);
   const second = Number(match[6] ?? 0);
   return Math.floor(
-    new Date(year, month - 1, day, hour, minute, second, 0).getTime() / 1000,
+    new Date(year, month - 1, day, hour, minute, second, 0).getTime() / 1000
   );
 }
 
@@ -57,19 +53,15 @@ function createDefaultCalculatorValues(): CalculatorFormValues {
 }
 
 function CalculatorResults({ values }: { values: CalculatorFormValues }) {
-  const result = useMemo(
-    () =>
-      computeVesting({
-        allocation: values.allocation,
-        claimedSoFar: values.claimedSoFar,
-        start: values.start,
-        end: values.end,
-        cliffDurationSec: values.cliffDays * DAY,
-        cliffReleaseBps: values.cliffReleaseBps,
-        now: values.simulatedNow,
-      }),
-    [values],
-  );
+  const result = computeVesting({
+    allocation: values.allocation,
+    claimedSoFar: values.claimedSoFar,
+    start: values.start,
+    end: values.end,
+    cliffDurationSec: values.cliffDays * DAY,
+    cliffReleaseBps: values.cliffReleaseBps,
+    now: values.simulatedNow,
+  });
 
   const progress =
     values.allocation > 0
@@ -132,10 +124,7 @@ export function VestingCalculator() {
   });
 
   return (
-    <section
-      id="calculator"
-      className="scroll-mt-24 space-y-6 rounded-2xl border border-border-low bg-card p-6 shadow-[0_24px_80px_-48px_rgba(124,58,237,0.35)]"
-    >
+    <section id="calculator" className="scroll-mt-24 space-y-6 p-6">
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
           Interactive demo
@@ -149,7 +138,7 @@ export function VestingCalculator() {
         </p>
       </div>
 
-      <form.Subscribe selector={(state) => state.values}>
+      <form.Subscribe selector={(state) => ({ ...state.values })}>
         {(values) => (
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-4">

@@ -32,22 +32,22 @@ function PositionStatus({
   if (loading) return <>Checking…</>;
 
   if (!hasReceipt && !hasAsset) {
-    return <>No position NFT — first claim mints one</>;
+    return <>No position NFT: first claim mints one</>;
   }
 
   if (holdsAsset) {
-    return <>Position NFT minted — you hold it</>;
+    return <>Position NFT minted: you hold it</>;
   }
 
   if (transferredAway) {
-    return <>Position NFT exists — you minted but no longer hold it</>;
+    return <>Position NFT exists: you minted but no longer hold it</>;
   }
 
   if (hasAsset) {
-    return <>Position NFT exists — held by another wallet</>;
+    return <>Position NFT exists: held by another wallet</>;
   }
 
-  return <>Claim receipt on-chain — asset account missing</>;
+  return <>Claim receipt on-chain: asset account missing</>;
 }
 
 const SelectedCampaignPanel = ({ record }: Props) => {
@@ -123,7 +123,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
         <p className="text-sm text-muted">
           {effectiveFirstClaim
             ? "First claim mints your position NFT and releases vested tokens."
-            : "Subsequent claim — no Merkle proof required."}
+            : "Subsequent claim: no Merkle proof required."}
         </p>
       </div>
 
@@ -204,7 +204,9 @@ const SelectedCampaignPanel = ({ record }: Props) => {
         <div className="flex justify-between gap-4">
           <dt className="text-muted">Collection</dt>
           <dd className="text-xs">
-            <TruncatedExplorerLink address={String(record.account.collection)} />
+            <TruncatedExplorerLink
+              address={String(record.account.collection)}
+            />
           </dd>
         </div>
         <div className="flex justify-between gap-4">
@@ -240,11 +242,14 @@ const SelectedCampaignPanel = ({ record }: Props) => {
           </p>
         )}
 
-      {!effectiveFirstClaim && !holdsAsset && hasAsset && status === "connected" && (
-        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-          You must hold the position NFT in this wallet to claim again.
-        </p>
-      )}
+      {!effectiveFirstClaim &&
+        !holdsAsset &&
+        hasAsset &&
+        status === "connected" && (
+          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            You must hold the position NFT in this wallet to claim again.
+          </p>
+        )}
 
       {error && (
         <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">

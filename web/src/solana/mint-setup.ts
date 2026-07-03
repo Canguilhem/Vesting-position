@@ -8,16 +8,14 @@ import {
   getMintToCheckedInstruction,
 } from "@solana-program/token";
 import {
+  // FIXME
   getMinimumBalanceForRentExemption,
   none,
   type Instruction,
   type TransactionSigner,
 } from "@solana/kit";
 import { type KeyPairSigner } from "@solana/signers";
-import {
-  SYSTEM_PROGRAM_ADDRESS,
-  TOKEN_PROGRAM_ADDRESS,
-} from "./constants";
+import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "./constants";
 
 export type MintSetupParams = {
   /** Connected wallet signer — one instance for payer + mint authority. */
@@ -28,7 +26,7 @@ export type MintSetupParams = {
 };
 
 export async function buildMintSetupInstructions(
-  params: MintSetupParams,
+  params: MintSetupParams
 ): Promise<Instruction[]> {
   const { authority, mintSigner, decimals, amount } = params;
   const owner = authority.address;
@@ -41,7 +39,7 @@ export async function buildMintSetupInstructions(
       space: getMintSize(),
       programAddress: TOKEN_PROGRAM_ADDRESS,
     },
-    { programAddress: SYSTEM_PROGRAM_ADDRESS },
+    { programAddress: SYSTEM_PROGRAM_ADDRESS }
   );
 
   const initializeMintIx = getInitializeMint2Instruction(
@@ -51,7 +49,7 @@ export async function buildMintSetupInstructions(
       mintAuthority: owner,
       freezeAuthority: none(),
     },
-    { programAddress: TOKEN_PROGRAM_ADDRESS },
+    { programAddress: TOKEN_PROGRAM_ADDRESS }
   );
 
   const [creatorAta] = await findAssociatedTokenPda({
@@ -69,7 +67,7 @@ export async function buildMintSetupInstructions(
       systemProgram: SYSTEM_PROGRAM_ADDRESS,
       tokenProgram: TOKEN_PROGRAM_ADDRESS,
     },
-    { programAddress: ASSOCIATED_TOKEN_PROGRAM_ADDRESS },
+    { programAddress: ASSOCIATED_TOKEN_PROGRAM_ADDRESS }
   );
 
   const mintToIx = getMintToCheckedInstruction(
@@ -80,7 +78,7 @@ export async function buildMintSetupInstructions(
       amount,
       decimals,
     },
-    { programAddress: TOKEN_PROGRAM_ADDRESS },
+    { programAddress: TOKEN_PROGRAM_ADDRESS }
   );
 
   return [createMintAccountIx, initializeMintIx, createAtaIx, mintToIx];
