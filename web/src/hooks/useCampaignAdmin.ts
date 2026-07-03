@@ -12,7 +12,7 @@ import {
   parseProgramError,
   type CampaignRecord,
 } from "../solana/vesting-positions";
-import { getMerkleProofForWallet } from "../lib/merkle";
+import { getMerkleProofForCampaign } from "../lib/merkle";
 import { invalidateAfterOnChainWrite } from "../lib/invalidate-on-chain-queries";
 import { tryParseAddress } from "../lib/utils";
 import { explorerTxUrl } from "../config";
@@ -88,12 +88,13 @@ export function useCampaignAdmin(record: CampaignRecord) {
                 action.originalRecipient,
                 "original recipient",
               );
-              const merkle = await getMerkleProofForWallet(
+              const merkle = await getMerkleProofForCampaign(
+                String(record.address),
                 String(originalRecipient),
               );
               if (!merkle) {
                 throw new Error(
-                  "Recipient not found in bundled merkle allowlist",
+                  "Recipient not found in this campaign's allowlist",
                 );
               }
               return [

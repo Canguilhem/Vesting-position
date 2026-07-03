@@ -8,12 +8,14 @@ import {
   parseProgramError,
   previewInitializeAddresses,
 } from "../solana/vesting-positions";
+import type { AllowListSnapshot } from "../lib/allow-list";
 import {
   type CampaignFormValues,
   type InitializeResult,
   campaignFormToParams,
 } from "../lib/initialize";
 import { invalidateAfterOnChainWrite } from "../lib/invalidate-on-chain-queries";
+import { persistCampaignLaunch } from "../lib/campaign-store";
 import { useSendWalletTransaction } from "./useSendWalletTransaction";
 
 function explorerTxUrl(signature: string): string {
@@ -34,7 +36,10 @@ export function useInitialize() {
   const { sendWithWallet, reset } = useSendWalletTransaction();
 
   const initialize = useCallback(
-    async (values: CampaignFormValues): Promise<InitializeResult> => {
+    async (
+      values: CampaignFormValues,
+      options?: { allowlistSnapshot?: AllowListSnapshot },
+    ): Promise<InitializeResult> => {
       reset();
 
       try {
@@ -80,6 +85,37 @@ export function useInitialize() {
           return [initIx];
         });
 
+        let registrySaved = false;
+        let registryPersistError: string | undefined;
+        let allowlistSaved = false;
+        let allowlistPersistError: string | undefined;
+
+        const persist = await persistCampaignLaunch({
+          registry: {
+            campaignAddress: String(campaign),
+            collectionAddress: String(collection),
+            mintAddress: String(mint),
+            creatorWallet: walletAddress,
+            merkleRoot: options?.allowlistSnapshot?.merkleRoot ?? values.merkleRootHex,
+            name: formParams.name,
+            uri: formParams.uri,
+            totalDeposit: formParams.totalDeposit,
+            startUnix: formParams.start,
+            endUnix: formParams.end,
+            cliffDurationSec: formParams.cliffDuration,
+            cliffReleaseBps: formParams.cliffReleaseBps,
+            gracePeriodSec: formParams.gracePeriod,
+            isTransferable: formParams.isTransferable,
+            initSignature: sig,
+          },
+          allowlist: options?.allowlistSnapshot,
+        });
+
+        registrySaved = persist.registrySaved;
+        registryPersistError = persist.registryPersistError;
+        allowlistSaved = persist.allowlistSaved;
+        allowlistPersistError = persist.allowlistPersistError;
+
         const result: InitializeResult = {
           campaign,
           collection,
@@ -87,6 +123,10 @@ export function useInitialize() {
           totalDeposit: formParams.totalDeposit,
           initializeSignature: sig,
           initializeExplorerUrl: explorerTxUrl(sig),
+          registrySaved,
+          registryPersistError,
+          allowlistSaved,
+          allowlistPersistError,
         };
 
         invalidateAfterOnChainWrite(queryClient, walletAddress);

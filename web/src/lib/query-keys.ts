@@ -11,9 +11,8 @@ export const queryKeys = {
   walletBalance: (wallet: string, mint: string) =>
     ["walletBalance", wallet, mint] as const,
 
-  merkleProof: (wallet: string) => ["merkleProof", wallet] as const,
-
-  merkleFixture: () => ["merkleFixture"] as const,
+  merkleProof: (campaign: string, wallet: string) =>
+    ["merkleProof", campaign, wallet] as const,
 
   profile: (wallet: string) => ["profile", wallet] as const,
 

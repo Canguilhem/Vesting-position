@@ -9,7 +9,7 @@ import {
 } from "../solana/vesting-positions";
 import type { Address } from "@solana/addresses";
 import {
-  getMerkleProofForWallet,
+  getMerkleProofForCampaign,
   merkleRootMatchesCampaign,
 } from "../lib/merkle";
 import { fetchUserCampaignPosition } from "../solana/profile-data";
@@ -81,10 +81,13 @@ export function useClaim(record: CampaignRecord) {
         let allocation: bigint | undefined;
 
         if (isFirstClaim) {
-          const merkle = await getMerkleProofForWallet(userAddress);
+          const merkle = await getMerkleProofForCampaign(
+            String(record.address),
+            String(userAddress),
+          );
           if (!merkle) {
             throw new Error(
-              "Your wallet is not on the demo allowlist. Use a whitelisted devnet wallet or deploy a new campaign.",
+              "Your wallet is not on this campaign's allowlist.",
             );
           }
           if (
@@ -94,7 +97,7 @@ export function useClaim(record: CampaignRecord) {
             )
           ) {
             throw new Error(
-              "Campaign merkle root does not match the bundled allowlist.",
+              "Campaign merkle root does not match the stored allowlist.",
             );
           }
           proofs = proofsToBytes(merkle.proofs);

@@ -1,36 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  getMerkleProofForWallet,
-  loadMerkleFixture,
+  getMerkleProofForCampaign,
   merkleRootMatchesCampaign,
 } from "../lib/merkle";
 import { QUERY_STALE } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 
-export function useMerkleFixture() {
-  const query = useQuery({
-    queryKey: queryKeys.merkleFixture(),
-    queryFn: loadMerkleFixture,
-    staleTime: QUERY_STALE.merkle,
-  });
-
-  return {
-    fixture: query.data,
-    loading: query.isLoading,
-    error: query.error,
-  };
-}
-
 export function useMerkleAllowlist(
+  campaignAddress: string,
   walletAddress: string | undefined,
   campaignMerkleRoot: Uint8Array,
 ) {
   const query = useQuery({
-    queryKey: walletAddress
-      ? queryKeys.merkleProof(walletAddress)
-      : ["merkleProof", "disabled"],
-    queryFn: () => getMerkleProofForWallet(walletAddress!),
-    enabled: Boolean(walletAddress),
+    queryKey:
+      walletAddress && campaignAddress
+        ? queryKeys.merkleProof(campaignAddress, walletAddress)
+        : ["merkleProof", "disabled"],
+    queryFn: () =>
+      getMerkleProofForCampaign(campaignAddress, walletAddress!),
+    enabled: Boolean(walletAddress && campaignAddress),
     staleTime: QUERY_STALE.merkle,
   });
 

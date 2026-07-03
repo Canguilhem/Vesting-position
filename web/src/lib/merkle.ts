@@ -1,3 +1,5 @@
+import { fetchMerkleProofFromStore } from "./merkle-store";
+
 export interface MerkleEntry {
   amount: string;
   proofs: string[];
@@ -7,6 +9,12 @@ export interface MerkleFixture {
   merkleRoot: string;
   [pubkey: string]: MerkleEntry[] | string;
 }
+
+export type MerkleProofResult = {
+  allocation: bigint;
+  proofs: number[][];
+  merkleRoot: string;
+};
 
 function parseProofHex(hex: string): number[] {
   const stripped = hex.startsWith("0x") ? hex.slice(2) : hex;
@@ -32,11 +40,9 @@ export async function loadMerkleFixture(): Promise<MerkleFixture> {
   return cachedFixture;
 }
 
-export async function getMerkleProofForWallet(walletAddress: string): Promise<{
-  allocation: bigint;
-  proofs: number[][];
-  merkleRoot: string;
-} | null> {
+async function getMerkleProofFromLegacyFixture(
+  walletAddress: string,
+): Promise<MerkleProofResult | null> {
   const fixture = await loadMerkleFixture();
   const entries = fixture[walletAddress.toLowerCase()] as
     | MerkleEntry[]
@@ -49,6 +55,27 @@ export async function getMerkleProofForWallet(walletAddress: string): Promise<{
     proofs: entry.proofs.map(parseProofHex),
     merkleRoot: fixture.merkleRoot,
   };
+}
+
+/** Campaign-scoped lookup: Supabase store first, then legacy bundled fixture. */
+export async function getMerkleProofForCampaign(
+  campaignAddress: string,
+  walletAddress: string,
+): Promise<MerkleProofResult | null> {
+  const stored = await fetchMerkleProofFromStore(
+    campaignAddress,
+    walletAddress,
+  );
+  if (stored) return stored;
+
+  return getMerkleProofFromLegacyFixture(walletAddress);
+}
+
+/** @deprecated Use getMerkleProofForCampaign — kept for legacy callers. */
+export async function getMerkleProofForWallet(
+  walletAddress: string,
+): Promise<MerkleProofResult | null> {
+  return getMerkleProofFromLegacyFixture(walletAddress);
 }
 
 export function merkleRootMatchesCampaign(

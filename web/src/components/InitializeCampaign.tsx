@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { type Address } from "@solana/addresses";
 import { useWalletConnection } from "@solana/react-hooks";
@@ -13,11 +13,15 @@ import {
   type CampaignFormValues,
   type InitializeResult,
 } from "../lib/initialize";
+import {
+  buildAllowListFromCsv,
+  type AllowListSnapshot,
+} from "../lib/allow-list";
+import { isSupabaseConfigured } from "../lib/supabase";
 import { loadSavedTokens, type SavedToken } from "../lib/token-registry";
 import { formatTokenCount, formatTokens, rawToTokens } from "../lib/vesting";
 import { useInitialize } from "../hooks/useInitialize";
 import { useClusterTime } from "../hooks/useClusterTime";
-import { useMerkleFixture } from "../hooks/useMerkleAllowlist";
 import { useWalletTokenBalance } from "../hooks/useWalletTokenBalance";
 import { CampaignSuccessModal } from "./CampaignSuccessModal";
 import { fieldClassName, labelClassName } from "./form-styles";
@@ -29,37 +33,16 @@ export function InitializeCampaign({
   prefilledMint?: Address | null;
   onViewCampaign?: (campaign: Address) => void;
 }) {
-  const { fixture: merkleFixture, loading: merkleLoading } = useMerkleFixture();
-
-  if (merkleLoading || !merkleFixture) {
-    return (
-      <p className="text-sm text-muted">Loading bundled allowlist fixture…</p>
-    );
-  }
-
-  return (
-    <InitializeCampaignForm
-      prefilledMint={prefilledMint}
-      merkleRoot={merkleFixture.merkleRoot}
-      onViewCampaign={onViewCampaign}
-    />
-  );
-}
-
-function InitializeCampaignForm({
-  prefilledMint,
-  merkleRoot,
-  onViewCampaign,
-}: {
-  prefilledMint?: Address | null;
-  merkleRoot: string;
-  onViewCampaign?: (campaign: Address) => void;
-}) {
   const { status } = useWalletConnection();
   const [savedTokens] = useState<SavedToken[]>(() => loadSavedTokens());
   const [showModal, setShowModal] = useState(false);
   const [lastResult, setLastResult] = useState<InitializeResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [allowlistSnapshot, setAllowlistSnapshot] =
+    useState<AllowListSnapshot | null>(null);
+  const [allowlistError, setAllowlistError] = useState<string | null>(null);
+  const [allowlistParsing, setAllowlistParsing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { initialize } = useInitialize();
   const { clusterNowSec } = useClusterTime();
@@ -67,12 +50,16 @@ function InitializeCampaignForm({
   const form = useForm({
     defaultValues: createDefaultCampaignFormValues(
       prefilledMint ? String(prefilledMint) : null,
-      merkleRoot,
     ),
     onSubmit: async ({ value }) => {
+      if (!allowlistSnapshot) {
+        setSubmitError("Upload an allowlist CSV before launching.");
+        return;
+      }
+
       setSubmitError(null);
       try {
-        const result = await initialize(value);
+        const result = await initialize(value, { allowlistSnapshot });
         setLastResult(result);
         setShowModal(true);
       } catch (err) {
@@ -80,6 +67,35 @@ function InitializeCampaignForm({
       }
     },
   });
+
+  async function loadAllowlistCsv(csv: string) {
+    setAllowlistParsing(true);
+    setAllowlistError(null);
+    try {
+      const { snapshot } = await buildAllowListFromCsv(csv);
+      setAllowlistSnapshot(snapshot);
+      form.setFieldValue("merkleRootHex", snapshot.merkleRoot);
+    } catch (err) {
+      setAllowlistSnapshot(null);
+      setAllowlistError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAllowlistParsing(false);
+    }
+  }
+
+  async function handleCsvFile(file: File) {
+    const csv = await file.text();
+    await loadAllowlistCsv(csv);
+  }
+
+  async function loadSampleAllowlist() {
+    const res = await fetch("/sample-allowlist.csv");
+    if (!res.ok) {
+      setAllowlistError("Failed to load sample allowlist.");
+      return;
+    }
+    await loadAllowlistCsv(await res.text());
+  }
 
   function CampaignFields({ values }: { values: CampaignFormValues }) {
     const { balance: walletBalance, loading: balanceLoading } =
@@ -103,8 +119,90 @@ function InitializeCampaignForm({
       }
     })();
 
+    const totalAllowlistAllocation = allowlistSnapshot?.entries.reduce(
+      (sum, entry) => sum + entry.allocation,
+      0n,
+    );
+
     return (
       <>
+        <div className="rounded-xl border border-border-low bg-card/30 p-4 space-y-3">
+          <div className="space-y-1">
+            <p className="font-medium">Recipient allowlist</p>
+            <p className="text-xs text-muted">
+              Upload a semicolon-separated CSV with{" "}
+              <code className="font-mono">wallet;amount</code> columns (amount
+              in base token units). The merkle root is derived from this file
+              and stored per campaign
+              {isSupabaseConfigured()
+                ? " in Supabase"
+                : " when Supabase is configured"}
+              .
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleCsvFile(file);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              disabled={allowlistParsing}
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-lg border border-border-low px-3 py-2 text-sm transition hover:border-accent/30 disabled:opacity-50 cursor-pointer"
+            >
+              {allowlistParsing ? "Parsing…" : "Upload CSV"}
+            </button>
+            <button
+              type="button"
+              disabled={allowlistParsing}
+              onClick={() => void loadSampleAllowlist()}
+              className="rounded-lg border border-border-low px-3 py-2 text-sm text-muted transition hover:border-accent/30 disabled:opacity-50 cursor-pointer"
+            >
+              Load sample allowlist
+            </button>
+          </div>
+
+          {allowlistError && (
+            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {allowlistError}
+            </p>
+          )}
+
+          {allowlistSnapshot && (
+            <dl className="grid gap-2 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-xs text-muted">Recipients</dt>
+                <dd className="font-medium">
+                  {allowlistSnapshot.entries.length}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">Total allocation</dt>
+                <dd className="font-medium font-mono text-xs">
+                  {totalAllowlistAllocation != null
+                    ? formatTokens(totalAllowlistAllocation)
+                    : "—"}
+                </dd>
+              </div>
+              <div className="sm:col-span-3">
+                <dt className="text-xs text-muted">Merkle root</dt>
+                <dd className="font-mono text-xs break-all">
+                  {allowlistSnapshot.merkleRoot}
+                </dd>
+              </div>
+            </dl>
+          )}
+        </div>
+
         <div className="grid gap-4 lg:grid-cols-2">
           <label className={`${labelClassName()} lg:col-span-2`}>
             <span className="font-medium">Distribution token</span>
@@ -190,10 +288,10 @@ function InitializeCampaignForm({
               {(field) => (
                 <input
                   type="text"
+                  readOnly
                   value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  className={`${fieldClassName()} font-mono text-xs`}
+                  placeholder="Upload an allowlist CSV to compute the root"
+                  className={`${fieldClassName()} font-mono text-xs opacity-80`}
                   spellCheck={false}
                 />
               )}
@@ -386,6 +484,7 @@ function InitializeCampaignForm({
                 disabled={
                   status !== "connected" ||
                   balanceLoading ||
+                  !allowlistSnapshot ||
                   blocking.length > 0 ||
                   warnings.length > 0 ||
                   isSubmitting

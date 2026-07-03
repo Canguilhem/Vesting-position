@@ -65,6 +65,33 @@ export function CampaignSuccessModal({
           <CopyRow label="Token mint" value={result.mint} />
         </dl>
 
+        {result.registryPersistError && (
+          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            Campaign is live on-chain, but saving the registry failed:{" "}
+            {result.registryPersistError}
+          </p>
+        )}
+
+        {result.allowlistPersistError && (
+          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+            Campaign is live on-chain, but saving the allowlist failed:{" "}
+            {result.allowlistPersistError}
+          </p>
+        )}
+
+        {result.registrySaved && (
+          <p className="mt-4 text-xs text-emerald-400">
+            Campaign registered for browse and discovery.
+          </p>
+        )}
+
+        {result.allowlistSaved && (
+          <p className="mt-4 text-xs text-emerald-400">
+            Allowlist saved — recipients can claim with proofs from this
+            campaign.
+          </p>
+        )}
+
         <div className="mt-5 flex flex-wrap gap-3">
           <a
             href={result.initializeExplorerUrl}

@@ -72,8 +72,9 @@ const SelectedCampaignPanel = ({ record }: Props) => {
     useClaim(record);
 
   const { allowlist, loading: allowlistLoading } = useMerkleAllowlist(
+    String(record.address),
     userAddress,
-    record.account.merkleRoot
+    record.account.merkleRoot,
   );
 
   const campaignStatus = useCampaignStatus(record.account);
@@ -237,8 +238,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
         !allowlist.onList &&
         status === "connected" && (
           <p className="rounded-lg border border-border-low px-3 py-2 text-sm text-muted">
-            This wallet is not on the bundled demo allowlist (
-            <code className="font-mono text-xs">merkle_proofs.json</code>).
+            This wallet is not on this campaign&apos;s allowlist.
           </p>
         )}
 

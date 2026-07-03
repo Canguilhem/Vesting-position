@@ -62,6 +62,10 @@ export type InitializeResult = {
   totalDeposit: bigint;
   initializeSignature: string;
   initializeExplorerUrl: string;
+  registrySaved: boolean;
+  registryPersistError?: string;
+  allowlistSaved: boolean;
+  allowlistPersistError?: string;
 };
 
 export function defaultScheduleTimestamps(): { start: number; end: number } {
