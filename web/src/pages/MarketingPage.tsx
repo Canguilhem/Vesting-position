@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { EXPLORER_PROGRAM_URL, PROGRAM_ID } from "../config";
 import { VestingCalculator } from "../components/VestingCalculator";
+import { ClaimingWindowTimeline } from "../components/ClaimingWindowTimeline";
 
 const FEATURES = [
   {
@@ -199,12 +200,7 @@ export function MarketingPage() {
           ))}
         </div>
 
-        <div className="rounded-xl border border-border-low bg-background/60 p-6 font-mono text-xs leading-relaxed text-muted overflow-x-auto">
-          <pre>{`start                    end         end + grace
-  ┃━━━━━━━━━━━━━━━━━━━━━━┃━━━━━━━━━━━━━━┃
-  │   claims open (vesting)           │  clawback
-  │                                   │  opens`}</pre>
-        </div>
+        <ClaimingWindowTimeline />
       </section>
 
       <div className="mb-24">
