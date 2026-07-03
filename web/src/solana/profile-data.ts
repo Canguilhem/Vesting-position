@@ -1,5 +1,4 @@
 import type { Address } from "@solana/addresses";
-import type { Base58EncodedBytes, Base64EncodedBytes } from "@solana/rpc-types";
 import type { SolanaClient } from "@solana/client";
 import { findClaimReceiptPda } from "../generated/vesting-positions/src/generated/pdas/claimReceipt";
 import { accountExists, type CampaignRecord } from "./vesting-positions";
@@ -144,20 +143,20 @@ async function fetchHeldVestingPositions(
         {
           memcmp: {
             offset: 0n,
-            bytes: "AQ==" as Base64EncodedBytes,
+            bytes: "AQ==",
             encoding: "base64",
           },
         },
         {
           memcmp: {
             offset: 1n,
-            bytes: String(wallet) as Base58EncodedBytes,
+            bytes: String(wallet),
             encoding: "base58",
           },
         },
       ],
-    })
-    .send()) as MplCoreProgramAccount[];
+    } as unknown as Parameters<AppRpc["getProgramAccounts"]>[1])
+    .send()) as unknown as MplCoreProgramAccount[];
 
   const positions: PositionRecord[] = [];
 

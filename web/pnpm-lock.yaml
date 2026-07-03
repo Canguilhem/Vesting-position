@@ -11,9 +11,15 @@ importers:
       '@solana-program/compute-budget':
         specifier: ^0.7.0
         version: 0.7.0(@solana/kit@6.10.0(typescript@5.9.3))
+      '@solana-program/system':
+        specifier: ^0.7.0
+        version: 0.7.0(@solana/kit@6.10.0(typescript@5.9.3))
       '@solana-program/token':
         specifier: ^0.14.0
         version: 0.14.0(@solana/kit@6.10.0(typescript@5.9.3))
+      '@solana/addresses':
+        specifier: ^6.10.0
+        version: 6.10.0(typescript@5.9.3)
       '@solana/client':
         specifier: ^1.0.0-rc.2
         version: 1.7.0(@solana/sysvars@7.0.0(typescript@5.9.3))(@types/react@19.2.17)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))
@@ -29,6 +35,9 @@ importers:
       '@solana/react-hooks':
         specifier: ^1.0.0-rc.3
         version: 1.4.1(@solana/sysvars@7.0.0(typescript@5.9.3))(@types/react@19.2.17)(react@19.2.7)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.7))
+      '@solana/signers':
+        specifier: ^6.10.0
+        version: 6.10.0(typescript@5.9.3)
       '@solana/sysvars':
         specifier: ^7.0.0
         version: 7.0.0(typescript@5.9.3)
@@ -637,6 +646,11 @@ packages:
     resolution: {integrity: sha512-MaBeOxlvTruQhA7UYkOb3hVTEHPPagOtd+PvTm6a8rGgvEAP0kD4BbC37NceOaR4ABNqdaCmD5OMVRKgrE6KAg==}
     peerDependencies:
       '@solana/kit': ^6.4.0
+
+  '@solana-program/system@0.7.0':
+    resolution: {integrity: sha512-FKTBsKHpvHHNc1ATRm7SlC5nF/VdJtOSjldhcyfMN9R7xo712Mo2jHIzvBgn8zQO5Kg0DcWuKB7268Kv1ocicw==}
+    peerDependencies:
+      '@solana/kit': ^2.1.0
 
   '@solana-program/token-2022@0.7.0':
     resolution: {integrity: sha512-ByQdTdbgyhjGf9JklqGRf3u0nbQF5Hbn8Wb2Ir0LZHCgo8lG+2PmBN8UvNY6ONVYb7CjLbApgghvBAEQK1aagg==}
@@ -3127,6 +3141,10 @@ snapshots:
       '@solana/kit': 5.5.1(typescript@5.9.3)
 
   '@solana-program/system@0.12.2(@solana/kit@6.10.0(typescript@5.9.3))':
+    dependencies:
+      '@solana/kit': 6.10.0(typescript@5.9.3)
+
+  '@solana-program/system@0.7.0(@solana/kit@6.10.0(typescript@5.9.3))':
     dependencies:
       '@solana/kit': 6.10.0(typescript@5.9.3)
 
