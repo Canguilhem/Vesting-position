@@ -1,9 +1,12 @@
 import type { Address } from "@solana/addresses";
+import type { Base58EncodedBytes, Base64EncodedBytes } from "@solana/rpc-types";
 import type { SolanaClient } from "@solana/client";
 import { findClaimReceiptPda } from "../generated/vesting-positions/src/generated/pdas/claimReceipt";
 import { accountExists, type CampaignRecord } from "./vesting-positions";
+import { MPL_CORE_PROGRAM_ADDRESS } from "./constants";
 import { findAssetPda } from "./pdas";
 import {
+  isVestingPositionAsset,
   parseAssetCollection,
   parseAssetOwner,
   parsePositionAttributes,
@@ -116,18 +119,87 @@ async function tryLoadPositionForWallet(
   return buildPositionRecord(asset, data, campaign, wallet);
 }
 
+type MplCoreProgramAccount = {
+  pubkey: Address;
+  account: { data: [string, string] };
+};
+
+/**
+ * Positions held in this wallet (including received transfers). Asset PDAs stay
+ * tied to the original recipient; owner is read from mpl-core account data.
+ */
+async function fetchHeldVestingPositions(
+  rpc: AppRpc,
+  wallet: Address,
+  campaigns: CampaignRecord[],
+): Promise<PositionRecord[]> {
+  const campaignByCollection = new Map(
+    campaigns.map((c) => [String(c.account.collection), c]),
+  );
+
+  const accounts = (await rpc
+    .getProgramAccounts(MPL_CORE_PROGRAM_ADDRESS, {
+      encoding: "base64",
+      filters: [
+        {
+          memcmp: {
+            offset: 0n,
+            bytes: "AQ==" as Base64EncodedBytes,
+            encoding: "base64",
+          },
+        },
+        {
+          memcmp: {
+            offset: 1n,
+            bytes: String(wallet) as Base58EncodedBytes,
+            encoding: "base58",
+          },
+        },
+      ],
+    })
+    .send()) as MplCoreProgramAccount[];
+
+  const positions: PositionRecord[] = [];
+
+  for (const { pubkey, account } of accounts) {
+    const data = decodeBase64AccountData(account.data);
+    if (!isVestingPositionAsset(data)) continue;
+
+    const collection = parseAssetCollection(data);
+    if (!collection) continue;
+
+    const campaign = campaignByCollection.get(String(collection));
+    if (!campaign) continue;
+
+    const record = buildPositionRecord(pubkey, data, campaign, wallet);
+    if (record) positions.push(record);
+  }
+
+  return positions;
+}
+
+async function tryLoadHeldPositionForCampaign(
+  rpc: AppRpc,
+  wallet: Address,
+  campaign: CampaignRecord,
+): Promise<PositionRecord | null> {
+  const held = await fetchHeldVestingPositions(rpc, wallet, [campaign]);
+  return held[0] ?? null;
+}
+
 export async function fetchUserCampaignPosition(
   rpc: AppRpc,
   wallet: Address,
   campaign: CampaignRecord,
 ): Promise<PositionRecord | null> {
-  return tryLoadPositionForWallet(rpc, wallet, campaign);
+  const asRecipient = await tryLoadPositionForWallet(rpc, wallet, campaign);
+  if (asRecipient) return asRecipient;
+  return tryLoadHeldPositionForCampaign(rpc, wallet, campaign);
 }
 
 /**
- * Scan the next slice of campaigns for positions tied to `wallet` (via claim
- * receipt + asset PDA). Avoids mpl-core getProgramAccounts — O(batch) RPC calls
- * only. Secondary-market purchases need an indexer / Supabase later.
+ * Scan campaigns for positions: claim-receipt path (original recipient, including
+ * transferred away) plus mpl-core owner scan on the first batch (received transfers).
  */
 export async function scanCampaignsForPositions(
   rpc: AppRpc,
@@ -141,13 +213,21 @@ export async function scanCampaignsForPositions(
   );
   const slice = sorted.slice(startIndex, startIndex + batchSize);
 
-  const found = await mapInBatches(slice, 5, (campaign) =>
-    tryLoadPositionForWallet(rpc, wallet, campaign),
-  );
+  const [receiptBased, held] = await Promise.all([
+    mapInBatches(slice, 5, (campaign) =>
+      tryLoadPositionForWallet(rpc, wallet, campaign),
+    ),
+    startIndex === 0
+      ? fetchHeldVestingPositions(rpc, wallet, sorted)
+      : Promise.resolve([]),
+  ]);
 
-  const positions = found.filter(
-    (record): record is PositionRecord => record != null,
-  );
+  const positions = dedupePositions([
+    ...receiptBased.filter(
+      (record): record is PositionRecord => record != null,
+    ),
+    ...held,
+  ]);
 
   const nextCampaignIndex = startIndex + slice.length;
 

@@ -24,6 +24,13 @@ import {
 } from "../generated/vesting-positions/src/generated/accounts/campaign";
 import { getClaimInstructionAsync } from "../generated/vesting-positions/src/generated/instructions/claim";
 import { getInitializeInstructionAsync } from "../generated/vesting-positions/src/generated/instructions/initialize";
+import { getFreezeCollectionInstructionAsync } from "../generated/vesting-positions/src/generated/instructions/freezeCollection";
+import { getFreezeAssetInstructionAsync } from "../generated/vesting-positions/src/generated/instructions/freezeAsset";
+import { getClawbackInstructionAsync } from "../generated/vesting-positions/src/generated/instructions/clawback";
+import { getClawbackUnclaimedInstructionAsync } from "../generated/vesting-positions/src/generated/instructions/clawbackUnclaimed";
+import { getCancelCampaignInstructionAsync } from "../generated/vesting-positions/src/generated/instructions/cancelCampaign";
+import { getCloseCampaignInstructionAsync } from "../generated/vesting-positions/src/generated/instructions/closeCampaign";
+import { getExcludeAssetInstructionAsync } from "../generated/vesting-positions/src/generated/instructions/excludeAsset";
 import { findCampaignPda } from "../generated/vesting-positions/src/generated/pdas/campaign";
 import { findClaimReceiptPda } from "../generated/vesting-positions/src/generated/pdas/claimReceipt";
 import { findCollectionPda } from "../generated/vesting-positions/src/generated/pdas/collection";
@@ -227,6 +234,8 @@ export async function buildClaimInstruction(params: {
   isFirstClaim: boolean;
   proofs?: Array<Uint8Array>;
   allocation?: bigint;
+  /** Set when claiming with a transferred position (asset PDA is keyed to original recipient). */
+  assetAddress?: Address;
   name?: string;
   uri?: string;
 }): Promise<Instruction> {
@@ -237,14 +246,17 @@ export async function buildClaimInstruction(params: {
     isFirstClaim,
     proofs,
     allocation,
+    assetAddress,
     name = "Vesting Position",
     uri = "https://vesting-positions.dev/position.json",
   } = params;
 
-  const asset = await findAssetPda({
-    campaign: campaignAddress,
-    user: user.address,
-  });
+  const asset =
+    assetAddress ??
+    (await findAssetPda({
+      campaign: campaignAddress,
+      user: user.address,
+    }));
 
   return getClaimInstructionAsync({
     user,
@@ -256,6 +268,122 @@ export async function buildClaimInstruction(params: {
     allocation: isFirstClaim && allocation != null ? allocation : null,
     name,
     uri,
+    mplCoreProgram: MPL_CORE_PROGRAM_ADDRESS,
+  });
+}
+
+export async function buildFreezeCollectionInstruction(params: {
+  creator: TransactionSigner;
+  campaignAddress: Address;
+  campaign: CampaignData;
+  shouldFreeze: boolean;
+}): Promise<Instruction> {
+  return getFreezeCollectionInstructionAsync({
+    creator: params.creator,
+    campaign: params.campaignAddress,
+    collection: params.campaign.collection,
+    shouldFreeze: params.shouldFreeze,
+    mplCoreProgram: MPL_CORE_PROGRAM_ADDRESS,
+  });
+}
+
+export async function buildFreezeAssetInstruction(params: {
+  creator: TransactionSigner;
+  campaignAddress: Address;
+  campaign: CampaignData;
+  asset: Address;
+  shouldFreeze: boolean;
+}): Promise<Instruction> {
+  return getFreezeAssetInstructionAsync({
+    creator: params.creator,
+    campaign: params.campaignAddress,
+    collection: params.campaign.collection,
+    asset: params.asset,
+    shouldFreeze: params.shouldFreeze,
+    mplCoreProgram: MPL_CORE_PROGRAM_ADDRESS,
+  });
+}
+
+export async function buildClawbackInstruction(params: {
+  creator: TransactionSigner;
+  campaignAddress: Address;
+  campaign: CampaignData;
+  asset: Address;
+}): Promise<Instruction> {
+  return getClawbackInstructionAsync({
+    creator: params.creator,
+    campaign: params.campaignAddress,
+    collection: params.campaign.collection,
+    asset: params.asset,
+    mint: params.campaign.mintToDistribute,
+    mplCoreProgram: MPL_CORE_PROGRAM_ADDRESS,
+  });
+}
+
+export async function buildClawbackUnclaimedInstruction(params: {
+  creator: TransactionSigner;
+  campaignAddress: Address;
+  campaign: CampaignData;
+  originalRecipient: Address;
+  allocation: bigint;
+  proofs: Uint8Array[];
+}): Promise<Instruction> {
+  const asset = await findAssetPda({
+    campaign: params.campaignAddress,
+    user: params.originalRecipient,
+  });
+
+  return getClawbackUnclaimedInstructionAsync({
+    creator: params.creator,
+    campaign: params.campaignAddress,
+    collection: params.campaign.collection,
+    asset,
+    mint: params.campaign.mintToDistribute,
+    originalRecipient: params.originalRecipient,
+    allocation: params.allocation,
+    proofs: params.proofs,
+  });
+}
+
+export async function buildCancelCampaignInstruction(params: {
+  creator: TransactionSigner;
+  campaignAddress: Address;
+  campaign: CampaignData;
+}): Promise<Instruction> {
+  return getCancelCampaignInstructionAsync({
+    creator: params.creator,
+    campaign: params.campaignAddress,
+    collection: params.campaign.collection,
+    mint: params.campaign.mintToDistribute,
+    mplCoreProgram: MPL_CORE_PROGRAM_ADDRESS,
+  });
+}
+
+export async function buildCloseCampaignInstruction(params: {
+  creator: TransactionSigner;
+  campaignAddress: Address;
+  campaign: CampaignData;
+}): Promise<Instruction> {
+  return getCloseCampaignInstructionAsync({
+    creator: params.creator,
+    campaign: params.campaignAddress,
+    collection: params.campaign.collection,
+    mint: params.campaign.mintToDistribute,
+  });
+}
+
+export async function buildExcludeAssetInstruction(params: {
+  creator: TransactionSigner;
+  campaignAddress: Address;
+  campaign: CampaignData;
+  asset: Address;
+}): Promise<Instruction> {
+  return getExcludeAssetInstructionAsync({
+    creator: params.creator,
+    campaign: params.campaignAddress,
+    collection: params.campaign.collection,
+    asset: params.asset,
+    mint: params.campaign.mintToDistribute,
     mplCoreProgram: MPL_CORE_PROGRAM_ADDRESS,
   });
 }

@@ -81,6 +81,8 @@ const SelectedCampaignPanel = ({ record }: Props) => {
     position != null &&
     userAddress != null &&
     String(position.owner) === String(userAddress);
+  const isSubsequentHolder = holdsAsset && position != null;
+  const effectiveFirstClaim = isFirstClaim && !isSubsequentHolder;
   const statusLoading = claimStateLoading || positionLoading;
 
   const canSubmit =
@@ -88,7 +90,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
     !isSending &&
     campaignStatus !== "closed" &&
     campaignStatus !== "upcoming" &&
-    (isFirstClaim ? allowlist?.onList === true : hasAsset && holdsAsset);
+    (effectiveFirstClaim ? allowlist?.onList === true : holdsAsset);
 
   const allocation =
     position?.attributes.allocation ??
@@ -97,7 +99,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
   const claimableNow = position?.claimable ?? 0;
 
   const expectedFirstClaim = useMemo(() => {
-    if (!isFirstClaim || !allowlist?.onList) return null;
+    if (!effectiveFirstClaim || !allowlist?.onList) return null;
     return computeVesting({
       allocation: Number(allowlist.allocation),
       claimedSoFar: 0,
@@ -107,7 +109,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
       cliffReleaseBps: record.account.cliffReleaseBps,
       now: Math.floor(Date.now() / 1000),
     }).claimable;
-  }, [isFirstClaim, allowlist, record.account]);
+  }, [effectiveFirstClaim, allowlist, record.account]);
 
   const refreshAll = () => {
     void refreshClaimState();
@@ -119,7 +121,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
       <div className="space-y-1">
         <h3 className="text-lg font-semibold">Claim vested tokens</h3>
         <p className="text-sm text-muted">
-          {isFirstClaim
+          {effectiveFirstClaim
             ? "First claim mints your position NFT and releases vested tokens."
             : "Subsequent claim — no Merkle proof required."}
         </p>
@@ -151,7 +153,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
                 </dd>
               </div>
             )}
-            {!isFirstClaim && (
+            {!effectiveFirstClaim && (
               <>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted">Claimed so far</dt>
@@ -167,7 +169,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
                 </div>
               </>
             )}
-            {isFirstClaim &&
+            {effectiveFirstClaim &&
               allowlist?.onList &&
               expectedFirstClaim != null && (
                 <div className="flex justify-between gap-4">
@@ -228,7 +230,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
         </p>
       )}
 
-      {isFirstClaim &&
+      {effectiveFirstClaim &&
         allowlist &&
         !allowlist.onList &&
         status === "connected" && (
@@ -238,7 +240,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
           </p>
         )}
 
-      {!isFirstClaim && hasAsset && !holdsAsset && status === "connected" && (
+      {!effectiveFirstClaim && !holdsAsset && hasAsset && status === "connected" && (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
           You must hold the position NFT in this wallet to claim again.
         </p>
@@ -289,7 +291,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
         >
           {isSending
             ? "Confirm in wallet…"
-            : isFirstClaim
+            : effectiveFirstClaim
               ? "First claim (mint position)"
               : "Claim vested tokens"}
         </button>

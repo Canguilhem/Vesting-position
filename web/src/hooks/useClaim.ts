@@ -66,11 +66,16 @@ export function useClaim(record: CampaignRecord) {
         );
         claimedBefore = positionBefore?.attributes.claimedSoFar ?? 0n;
 
-        const { isFirstClaim } = await getUserClaimState(
+        const holdsPosition =
+          positionBefore != null &&
+          String(positionBefore.owner) === String(userAddress);
+
+        const { isFirstClaim: receiptSaysFirst } = await getUserClaimState(
           client.runtime.rpc,
           record.address,
           userAddress,
         );
+        const isFirstClaim = receiptSaysFirst && !holdsPosition;
 
         let proofs: Uint8Array[] | undefined;
         let allocation: bigint | undefined;
@@ -104,6 +109,7 @@ export function useClaim(record: CampaignRecord) {
             isFirstClaim,
             proofs,
             allocation,
+            assetAddress: positionBefore?.asset,
           }),
         ];
       });
