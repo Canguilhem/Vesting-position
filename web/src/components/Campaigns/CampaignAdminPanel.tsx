@@ -1,40 +1,80 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useWalletConnection } from "@solana/react-hooks";
 import type { CampaignRecord } from "../../hooks/useCampaigns";
 import { useCampaignAdmin } from "../../hooks/useCampaignAdmin";
-import { formatCampaignTimestamp } from "../../lib/campaign-status";
 
 type Props = {
   record: CampaignRecord;
-  /** Omit outer title when nested under Profile campaign cards. */
-  embedded?: boolean;
 };
 
-function AdminActionGroup({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-border-low bg-card/30 px-3 py-3 space-y-2">
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        <p className="text-xs text-muted">{description}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
+type AdminActionId =
+  | "freezeCollection"
+  | "freezeAsset"
+  | "excludeAsset"
+  | "clawback"
+  | "clawbackUnclaimed"
+  | "cancelCampaign"
+  | "closeCampaign";
 
-export function CampaignAdminPanel({ record, embedded = false }: Props) {
+const ADMIN_ACTIONS: {
+  id: AdminActionId;
+  label: string;
+  description: string;
+  destructive?: boolean;
+}[] = [
+  {
+    id: "freezeCollection",
+    label: "Freeze collection",
+    description:
+      "Freeze or unfreeze the mpl-core collection (loyalty badges after vesting).",
+  },
+  {
+    id: "freezeAsset",
+    label: "Freeze position NFT",
+    description: "Freeze or unfreeze a specific position asset.",
+  },
+  {
+    id: "excludeAsset",
+    label: "Exclude live position",
+    description:
+      "Burn a position NFT and return unclaimed tokens to you (during the campaign).",
+  },
+  {
+    id: "clawback",
+    label: "Clawback live position",
+    description:
+      "After the grace period, burn a position and recover remaining unclaimed tokens.",
+  },
+  {
+    id: "clawbackUnclaimed",
+    label: "Clawback unclaimed",
+    description:
+      "Recover tokens for an allowlisted recipient who never claimed (uses bundled merkle proofs).",
+  },
+  {
+    id: "cancelCampaign",
+    label: "Cancel campaign",
+    description:
+      "Mistake safeguard — only works while no position has been minted.",
+    destructive: true,
+  },
+  {
+    id: "closeCampaign",
+    label: "Close campaign",
+    description:
+      "Close the campaign PDA and vault after all tokens are claimed or clawed back.",
+  },
+];
+
+const inputClass =
+  "w-full rounded-md border border-border-low bg-background px-3 py-2 font-mono text-xs";
+
+export function CampaignAdminPanel({ record }: Props) {
   const { wallet, status } = useWalletConnection();
   const { run, isSending, signature, explorerTxUrl, error } =
     useCampaignAdmin(record);
 
+  const [selectedId, setSelectedId] = useState<AdminActionId | "">("");
   const [assetAddress, setAssetAddress] = useState("");
   const [originalRecipient, setOriginalRecipient] = useState("");
 
@@ -45,6 +85,7 @@ export function CampaignAdminPanel({ record, embedded = false }: Props) {
 
   if (!isCreator) return null;
 
+  const selected = ADMIN_ACTIONS.find((a) => a.id === selectedId);
   const disabled = isSending;
   const btnClass =
     "rounded-md border border-border-low px-3 py-1.5 text-xs font-medium transition hover:border-accent/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer";
@@ -54,26 +95,7 @@ export function CampaignAdminPanel({ record, embedded = false }: Props) {
   };
 
   return (
-    <div
-      className={
-        embedded
-          ? "space-y-3 border-t border-border-low pt-3"
-          : "space-y-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-5"
-      }
-    >
-      {!embedded && (
-        <div className="space-y-1">
-          <h3 className="text-lg font-semibold">Campaign admin</h3>
-          <p className="text-sm text-muted">
-            Creator-only instructions for this campaign. Claim window ends{" "}
-            {formatCampaignTimestamp(
-              record.account.end + record.account.gracePeriod,
-            )}
-            .
-          </p>
-        </div>
-      )}
-
+    <div className="space-y-3 border-t border-border-low pt-3">
       {error && (
         <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
           {error}
@@ -94,173 +116,210 @@ export function CampaignAdminPanel({ record, embedded = false }: Props) {
         </div>
       )}
 
-      <div className="space-y-3">
-        <AdminActionGroup
-          title="Freeze collection"
-          description="Freeze or unfreeze the mpl-core collection (loyalty badges after vesting)."
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <nav
+          className="flex shrink-0 flex-row flex-wrap gap-1 sm:w-40 sm:flex-col"
+          aria-label="Admin instructions"
         >
-          <div className="flex flex-wrap gap-2">
+          {ADMIN_ACTIONS.map((action) => (
             <button
+              key={action.id}
               type="button"
-              disabled={disabled}
-              className={btnClass}
-              onClick={() => void runAction({ type: "freezeCollection", shouldFreeze: true })}
+              onClick={() => setSelectedId(action.id)}
+              className={`rounded-md px-2.5 py-1.5 text-left text-xs font-medium transition cursor-pointer ${
+                selectedId === action.id
+                  ? "bg-accent/20 text-accent"
+                  : "text-muted hover:bg-card/60 hover:text-foreground"
+              } ${action.destructive && selectedId !== action.id ? "text-red-300/80" : ""}`}
             >
-              Freeze collection
+              {action.label}
             </button>
-            <button
-              type="button"
-              disabled={disabled}
-              className={btnClass}
-              onClick={() => void runAction({ type: "freezeCollection", shouldFreeze: false })}
-            >
-              Unfreeze collection
-            </button>
-          </div>
-        </AdminActionGroup>
+          ))}
+        </nav>
 
-        <AdminActionGroup
-          title="Freeze position NFT"
-          description="Freeze or unfreeze a specific position asset."
-        >
-          <input
-            type="text"
-            value={assetAddress}
-            onChange={(e) => setAssetAddress(e.target.value)}
-            placeholder="Position asset address"
-            className="w-full rounded-md border border-border-low bg-background px-3 py-2 font-mono text-xs"
-          />
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={disabled || !assetAddress.trim()}
-              className={btnClass}
-              onClick={() =>
-                void runAction({
-                  type: "freezeAsset",
-                  asset: assetAddress,
-                  shouldFreeze: true,
-                })
-              }
-            >
-              Freeze asset
-            </button>
-            <button
-              type="button"
-              disabled={disabled || !assetAddress.trim()}
-              className={btnClass}
-              onClick={() =>
-                void runAction({
-                  type: "freezeAsset",
-                  asset: assetAddress,
-                  shouldFreeze: false,
-                })
-              }
-            >
-              Unfreeze asset
-            </button>
-          </div>
-        </AdminActionGroup>
+        <div className="min-w-0 flex-1 rounded-lg border border-border-low bg-card/30 px-3 py-3">
+          {!selected ? (
+            <p className="text-xs text-muted">
+              Choose an instruction to see details and submit.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium">{selected.label}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {selected.description}
+                </p>
+              </div>
 
-        <AdminActionGroup
-          title="Exclude live position"
-          description="Burn a position NFT and return unclaimed tokens to you (during the campaign)."
-        >
-          <input
-            type="text"
-            value={assetAddress}
-            onChange={(e) => setAssetAddress(e.target.value)}
-            placeholder="Position asset address"
-            className="w-full rounded-md border border-border-low bg-background px-3 py-2 font-mono text-xs"
-          />
-          <button
-            type="button"
-            disabled={disabled || !assetAddress.trim()}
-            className={btnClass}
-            onClick={() =>
-              void runAction({ type: "excludeAsset", asset: assetAddress })
-            }
-          >
-            Exclude asset
-          </button>
-        </AdminActionGroup>
+              {selected.id === "freezeCollection" && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    className={btnClass}
+                    onClick={() =>
+                      void runAction({
+                        type: "freezeCollection",
+                        shouldFreeze: true,
+                      })
+                    }
+                  >
+                    Freeze
+                  </button>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    className={btnClass}
+                    onClick={() =>
+                      void runAction({
+                        type: "freezeCollection",
+                        shouldFreeze: false,
+                      })
+                    }
+                  >
+                    Unfreeze
+                  </button>
+                </div>
+              )}
 
-        <AdminActionGroup
-          title="Clawback live position"
-          description="After the grace period, burn a position and recover remaining unclaimed tokens."
-        >
-          <input
-            type="text"
-            value={assetAddress}
-            onChange={(e) => setAssetAddress(e.target.value)}
-            placeholder="Position asset address"
-            className="w-full rounded-md border border-border-low bg-background px-3 py-2 font-mono text-xs"
-          />
-          <button
-            type="button"
-            disabled={disabled || !assetAddress.trim()}
-            className={btnClass}
-            onClick={() =>
-              void runAction({ type: "clawback", asset: assetAddress })
-            }
-          >
-            Clawback position
-          </button>
-        </AdminActionGroup>
+              {selected.id === "freezeAsset" && (
+                <>
+                  <input
+                    type="text"
+                    value={assetAddress}
+                    onChange={(e) => setAssetAddress(e.target.value)}
+                    placeholder="Position asset address"
+                    className={inputClass}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={disabled || !assetAddress.trim()}
+                      className={btnClass}
+                      onClick={() =>
+                        void runAction({
+                          type: "freezeAsset",
+                          asset: assetAddress,
+                          shouldFreeze: true,
+                        })
+                      }
+                    >
+                      Freeze asset
+                    </button>
+                    <button
+                      type="button"
+                      disabled={disabled || !assetAddress.trim()}
+                      className={btnClass}
+                      onClick={() =>
+                        void runAction({
+                          type: "freezeAsset",
+                          asset: assetAddress,
+                          shouldFreeze: false,
+                        })
+                      }
+                    >
+                      Unfreeze asset
+                    </button>
+                  </div>
+                </>
+              )}
 
-        <AdminActionGroup
-          title="Clawback unclaimed allocation"
-          description="Recover tokens for an allowlisted recipient who never claimed (uses bundled merkle proofs)."
-        >
-          <input
-            type="text"
-            value={originalRecipient}
-            onChange={(e) => setOriginalRecipient(e.target.value)}
-            placeholder="Original recipient wallet"
-            className="w-full rounded-md border border-border-low bg-background px-3 py-2 font-mono text-xs"
-          />
-          <button
-            type="button"
-            disabled={disabled || !originalRecipient.trim()}
-            className={btnClass}
-            onClick={() =>
-              void runAction({
-                type: "clawbackUnclaimed",
-                originalRecipient,
-              })
-            }
-          >
-            Clawback unclaimed
-          </button>
-        </AdminActionGroup>
+              {selected.id === "excludeAsset" && (
+                <>
+                  <input
+                    type="text"
+                    value={assetAddress}
+                    onChange={(e) => setAssetAddress(e.target.value)}
+                    placeholder="Position asset address"
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    disabled={disabled || !assetAddress.trim()}
+                    className={btnClass}
+                    onClick={() =>
+                      void runAction({
+                        type: "excludeAsset",
+                        asset: assetAddress,
+                      })
+                    }
+                  >
+                    Exclude asset
+                  </button>
+                </>
+              )}
 
-        <AdminActionGroup
-          title="Cancel campaign"
-          description="Mistake safeguard — only works while no position has been minted."
-        >
-          <button
-            type="button"
-            disabled={disabled}
-            className={`${btnClass} border-red-500/40 text-red-200 hover:border-red-400/60`}
-            onClick={() => void runAction({ type: "cancelCampaign" })}
-          >
-            Cancel campaign
-          </button>
-        </AdminActionGroup>
+              {selected.id === "clawback" && (
+                <>
+                  <input
+                    type="text"
+                    value={assetAddress}
+                    onChange={(e) => setAssetAddress(e.target.value)}
+                    placeholder="Position asset address"
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    disabled={disabled || !assetAddress.trim()}
+                    className={btnClass}
+                    onClick={() =>
+                      void runAction({ type: "clawback", asset: assetAddress })
+                    }
+                  >
+                    Clawback position
+                  </button>
+                </>
+              )}
 
-        <AdminActionGroup
-          title="Close campaign"
-          description="Close the campaign PDA and vault after all tokens are claimed or clawed back."
-        >
-          <button
-            type="button"
-            disabled={disabled}
-            className={btnClass}
-            onClick={() => void runAction({ type: "closeCampaign" })}
-          >
-            Close campaign
-          </button>
-        </AdminActionGroup>
+              {selected.id === "clawbackUnclaimed" && (
+                <>
+                  <input
+                    type="text"
+                    value={originalRecipient}
+                    onChange={(e) => setOriginalRecipient(e.target.value)}
+                    placeholder="Original recipient wallet"
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    disabled={disabled || !originalRecipient.trim()}
+                    className={btnClass}
+                    onClick={() =>
+                      void runAction({
+                        type: "clawbackUnclaimed",
+                        originalRecipient,
+                      })
+                    }
+                  >
+                    Clawback unclaimed
+                  </button>
+                </>
+              )}
+
+              {selected.id === "cancelCampaign" && (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  className={`${btnClass} border-red-500/40 text-red-200 hover:border-red-400/60`}
+                  onClick={() => void runAction({ type: "cancelCampaign" })}
+                >
+                  Cancel campaign
+                </button>
+              )}
+
+              {selected.id === "closeCampaign" && (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  className={btnClass}
+                  onClick={() => void runAction({ type: "closeCampaign" })}
+                >
+                  Close campaign
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -72,7 +72,7 @@ export function CampaignAdminCard({ record }: { record: CampaignRecord }) {
         </Link>
       </div>
 
-      {manageOpen && <CampaignAdminPanel record={record} embedded />}
+      {manageOpen && <CampaignAdminPanel record={record} />}
     </article>
   );
 }
