@@ -1,5 +1,10 @@
 import { useRef } from "react";
-import { buildAllowListFromCsv, type AllowListSnapshot } from "../../lib/allow-list";
+import {
+  buildAllowListFromCsv,
+  formatAllowlistLimits,
+  MAX_ALLOWLIST_CSV_BYTES,
+  type AllowListSnapshot,
+} from "../../lib/allow-list";
 import { isSupabaseConfigured } from "../../lib/supabase";
 import { formatTokens } from "../../lib/vesting";
 
@@ -20,11 +25,11 @@ export function LaunchStepAllowlist({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function loadAllowlistCsv(csv: string) {
+  async function loadAllowlistCsv(csv: string, byteLength?: number) {
     onParsingChange(true);
     onErrorChange(null);
     try {
-      const { snapshot: next } = await buildAllowListFromCsv(csv);
+      const { snapshot: next } = await buildAllowListFromCsv(csv, { byteLength });
       onSnapshotChange(next);
     } catch (err) {
       onSnapshotChange(null);
@@ -35,7 +40,15 @@ export function LaunchStepAllowlist({
   }
 
   async function handleCsvFile(file: File) {
-    await loadAllowlistCsv(await file.text());
+    if (file.size > MAX_ALLOWLIST_CSV_BYTES) {
+      onSnapshotChange(null);
+      onErrorChange(
+        `File is too large (${Math.ceil(file.size / 1024)} KB). MVP limit: ${formatAllowlistLimits()}.`,
+      );
+      return;
+    }
+    const csv = await file.text();
+    await loadAllowlistCsv(csv, file.size);
   }
 
   async function loadSampleAllowlist() {
@@ -59,8 +72,8 @@ export function LaunchStepAllowlist({
         <p className="max-w-2xl text-sm text-muted">
           Upload a semicolon-separated CSV with{" "}
           <code className="font-mono">wallet;amount</code> columns (amount in
-          base token units). The merkle root is derived from this file and stored
-          per campaign
+          base token units). MVP limit: {formatAllowlistLimits()}. The merkle
+          root is derived from this file and stored per campaign
           {isSupabaseConfigured()
             ? " in Supabase"
             : " when Supabase is configured"}

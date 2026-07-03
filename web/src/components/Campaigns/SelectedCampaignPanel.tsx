@@ -233,9 +233,24 @@ const SelectedCampaignPanel = ({ record }: Props) => {
         </p>
       )}
 
-      {effectiveFirstClaim &&
+      {campaignStatus === "upcoming" && status === "connected" && (
+        <p className="rounded-lg border border-border-low px-3 py-2 text-sm text-muted">
+          Claims open {formatCampaignTimestamp(record.account.start)}.
+          {allowlistLoading
+            ? " Checking allowlist…"
+            : allowlist?.onList
+              ? ` You're on the allowlist (${formatTokens(Number(allowlist.allocation))} tokens allocated).`
+              : effectiveFirstClaim
+                ? " This wallet isn't on this campaign's allowlist."
+                : null}
+        </p>
+      )}
+
+      {campaignStatus !== "upcoming" &&
+        effectiveFirstClaim &&
         allowlist &&
         !allowlist.onList &&
+        !allowlistLoading &&
         status === "connected" && (
           <p className="rounded-lg border border-border-low px-3 py-2 text-sm text-muted">
             This wallet is not on this campaign&apos;s allowlist.

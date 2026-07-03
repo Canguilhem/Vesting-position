@@ -91,6 +91,7 @@ export function useCampaignAdmin(record: CampaignRecord) {
               const merkle = await getMerkleProofForCampaign(
                 String(record.address),
                 String(originalRecipient),
+                record.account.merkleRoot,
               );
               if (!merkle) {
                 throw new Error(

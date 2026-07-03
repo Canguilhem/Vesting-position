@@ -5,6 +5,39 @@ import Papa from "papaparse";
 /** Keccak-256 — must match on-chain `leaf_hash` / `verify`. */
 const keccak256 = (data: string) => sha3(data, { outputLength: 256 });
 
+/** MVP guardrails — raise when moving off devnet / adding server-side ingest. */
+export const MAX_ALLOWLIST_ENTRIES = 500;
+export const MAX_ALLOWLIST_CSV_BYTES = 512 * 1024;
+
+export function formatAllowlistLimits(): string {
+  return `max ${MAX_ALLOWLIST_ENTRIES.toLocaleString()} recipients, ${Math.round(MAX_ALLOWLIST_CSV_BYTES / 1024)} KB file`;
+}
+
+export function validateAllowlistCsvInput(
+  csv: string,
+  byteLength = new TextEncoder().encode(csv).byteLength,
+): void {
+  if (byteLength > MAX_ALLOWLIST_CSV_BYTES) {
+    throw new Error(
+      `Allowlist CSV is too large (${Math.ceil(byteLength / 1024)} KB). MVP limit: ${formatAllowlistLimits()}.`,
+    );
+  }
+  if (!csv.trim()) {
+    throw new Error("Allowlist CSV is empty.");
+  }
+}
+
+export function validateAllowlistEntryCount(count: number): void {
+  if (count === 0) {
+    throw new Error("Allowlist CSV has no valid wallet;amount rows.");
+  }
+  if (count > MAX_ALLOWLIST_ENTRIES) {
+    throw new Error(
+      `Allowlist has ${count.toLocaleString()} recipients. MVP limit: ${MAX_ALLOWLIST_ENTRIES.toLocaleString()} (${formatAllowlistLimits()}).`,
+    );
+  }
+}
+
 export type AllowListAccount = {
   address: string;
   /** Raw token amount (base units), same as on-chain u64. */
@@ -39,6 +72,7 @@ export class AllowList {
               amount: (row.amount ?? "").trim(),
             }))
             .filter((row) => row.address && row.amount);
+          validateAllowlistEntryCount(rows.length);
           resolve(rows);
         },
         error: (error: Error) => reject(error),
@@ -120,8 +154,17 @@ export async function sha256Hex(data: string): Promise<string> {
 
 export async function buildAllowListFromCsv(
   csv: string,
+  options?: { byteLength?: number },
 ): Promise<{ list: AllowList; snapshot: AllowListSnapshot }> {
+  validateAllowlistCsvInput(csv, options?.byteLength);
   const sourceSha256 = await sha256Hex(csv);
   const list = await AllowList.fromCsv(csv);
   return { list, snapshot: list.toSnapshot(sourceSha256) };
+}
+
+/** Sum of CSV `amount` columns in base token units (matches on-chain u64 leaves). */
+export function totalAllowlistAllocationRaw(
+  snapshot: AllowListSnapshot,
+): bigint {
+  return snapshot.entries.reduce((sum, entry) => sum + entry.allocation, 0n);
 }

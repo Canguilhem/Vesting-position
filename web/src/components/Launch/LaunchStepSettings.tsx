@@ -10,6 +10,7 @@ import {
   type CampaignFormValues,
 } from "../../lib/initialize";
 import type { AllowListSnapshot } from "../../lib/allow-list";
+import { totalAllowlistAllocationRaw } from "../../lib/allow-list";
 import { formatTokenCount, formatTokens, rawToTokens } from "../../lib/vesting";
 import { useClusterTime } from "../../hooks/useClusterTime";
 import { useWalletTokenBalance } from "../../hooks/useWalletTokenBalance";
@@ -49,6 +50,10 @@ export function LaunchStepSettings({
   const { balance: walletBalance, loading: balanceLoading } =
     useWalletTokenBalance(mint.trim() || null);
 
+  const allowlistTotalRaw = allowlistSnapshot
+    ? totalAllowlistAllocationRaw(allowlistSnapshot)
+    : null;
+
   return (
     <form
       className="space-y-6"
@@ -78,6 +83,14 @@ export function LaunchStepSettings({
               {allowlistSnapshot?.entries.length ?? "—"}
             </dd>
           </div>
+          {allowlistTotalRaw != null && (
+            <div className="sm:col-span-2">
+              <dt className="text-xs text-muted">Allowlist total allocation</dt>
+              <dd className="font-medium font-mono text-xs">
+                {formatTokens(allowlistTotalRaw)} tokens
+              </dd>
+            </div>
+          )}
         </dl>
       </div>
 
@@ -132,23 +145,29 @@ export function LaunchStepSettings({
                         onClick={() =>
                           campaignForm.setFieldValue(
                             "totalDeposit",
-                            String(rawToTokens(walletBalance)),
+                            allowlistTotalRaw != null
+                              ? String(rawToTokens(allowlistTotalRaw))
+                              : String(rawToTokens(walletBalance)),
                           )
                         }
                         className="shrink-0 rounded-lg border border-border-low px-3 py-2 text-xs transition hover:border-accent/30 cursor-pointer"
                       >
-                        Use max
+                        {allowlistTotalRaw != null
+                          ? "Use allowlist total"
+                          : "Use max"}
                       </button>
                     )}
                   </div>
                   <span className="text-xs text-muted">
-                    {balanceLoading
-                      ? "Checking wallet balance…"
-                      : walletBalance != null
-                        ? `Your balance: ${formatTokens(walletBalance)} tokens`
-                        : "Default " +
-                          formatTokenCount(DEFAULT_CAMPAIGN_DEPOSIT_TOKENS) +
-                          " tokens per campaign"}
+                    {allowlistTotalRaw != null
+                      ? `Prefilled from CSV total (${formatTokens(allowlistTotalRaw)} tokens). Must not exceed your wallet balance.`
+                      : balanceLoading
+                        ? "Checking wallet balance…"
+                        : walletBalance != null
+                          ? `Your balance: ${formatTokens(walletBalance)} tokens`
+                          : "Default " +
+                            formatTokenCount(DEFAULT_CAMPAIGN_DEPOSIT_TOKENS) +
+                            " tokens per campaign"}
                   </span>
                 </label>
 

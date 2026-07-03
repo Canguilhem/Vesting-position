@@ -17,7 +17,11 @@ export function useMerkleAllowlist(
         ? queryKeys.merkleProof(campaignAddress, walletAddress)
         : ["merkleProof", "disabled"],
     queryFn: () =>
-      getMerkleProofForCampaign(campaignAddress, walletAddress!),
+      getMerkleProofForCampaign(
+        campaignAddress,
+        walletAddress!,
+        campaignMerkleRoot,
+      ),
     enabled: Boolean(walletAddress && campaignAddress),
     staleTime: QUERY_STALE.merkle,
   });

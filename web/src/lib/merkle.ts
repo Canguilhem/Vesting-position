@@ -57,16 +57,23 @@ async function getMerkleProofFromLegacyFixture(
   };
 }
 
-/** Campaign-scoped lookup: Supabase store first, then legacy bundled fixture. */
+/** Campaign-scoped lookup: Supabase store first, then legacy fixture only for demo-root campaigns. */
 export async function getMerkleProofForCampaign(
   campaignAddress: string,
   walletAddress: string,
+  campaignMerkleRoot: Uint8Array,
 ): Promise<MerkleProofResult | null> {
   const stored = await fetchMerkleProofFromStore(
     campaignAddress,
     walletAddress,
   );
   if (stored) return stored;
+
+  const fixture = await loadMerkleFixture();
+  if (!merkleRootMatchesCampaign(campaignMerkleRoot, fixture.merkleRoot)) {
+    // Custom allowlist — no Supabase row means we cannot claim first mint.
+    return null;
+  }
 
   return getMerkleProofFromLegacyFixture(walletAddress);
 }

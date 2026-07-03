@@ -6,7 +6,9 @@ import {
   type InitializeResult,
 } from "../../lib/initialize";
 import type { AllowListSnapshot } from "../../lib/allow-list";
+import { totalAllowlistAllocationRaw } from "../../lib/allow-list";
 import { useInitialize } from "../../hooks/useInitialize";
+import { rawToTokens } from "../../lib/vesting";
 import { CampaignSuccessModal } from "../CampaignSuccessModal";
 import { LaunchStepIndicator } from "./LaunchStepIndicator";
 import { LaunchStepAllowlist } from "./LaunchStepAllowlist";
@@ -76,6 +78,13 @@ export function LaunchCampaignWizard({
     }
   }, [mint, form]);
 
+  useEffect(() => {
+    if (!allowlistSnapshot) return;
+    form.setFieldValue("merkleRootHex", allowlistSnapshot.merkleRoot);
+    const totalRaw = totalAllowlistAllocationRaw(allowlistSnapshot);
+    form.setFieldValue("totalDeposit", String(rawToTokens(totalRaw)));
+  }, [allowlistSnapshot, form]);
+
   function goToStep(next: LaunchStep) {
     setStepError(null);
     setStep(next);
@@ -100,7 +109,6 @@ export function LaunchCampaignWizard({
         setStepError("Upload an allowlist CSV before continuing.");
         return;
       }
-      form.setFieldValue("merkleRootHex", allowlistSnapshot.merkleRoot);
       goToStep(3);
     }
   }

@@ -84,6 +84,7 @@ export function useClaim(record: CampaignRecord) {
           const merkle = await getMerkleProofForCampaign(
             String(record.address),
             String(userAddress),
+            record.account.merkleRoot,
           );
           if (!merkle) {
             throw new Error(
