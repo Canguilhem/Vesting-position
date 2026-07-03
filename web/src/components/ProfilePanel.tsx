@@ -1,29 +1,18 @@
 import { Link } from "react-router-dom";
-import type { Address } from "@solana/addresses";
 import { useProfile } from "../hooks/useProfile";
 import {
   CAMPAIGN_STATUS_COLORS,
   CAMPAIGN_STATUS_LABELS,
-  getCampaignStatus,
+  formatCampaignTimestamp,
 } from "../lib/campaign-status";
+import { useCampaignStatus } from "../hooks/useCampaigns";
 import type { PageSlice } from "../lib/pagination";
 import { formatPercent, formatTokens } from "../lib/vesting";
 import type { CampaignRecord } from "../hooks/useCampaigns";
 import type { PositionRecord } from "../solana/profile-data";
 import type { ProfileMint } from "../hooks/useProfile";
-
-function truncate(value: string, head = 6, tail = 4): string {
-  if (value.length <= head + tail + 1) return value;
-  return `${value.slice(0, head)}…${value.slice(-tail)}`;
-}
-
-function formatTimestamp(unixSec: number): string {
-  return new Date(unixSec * 1000).toLocaleString();
-}
-
-function explorerAddressUrl(addr: Address | string): string {
-  return `https://explorer.solana.com/address/${addr}?cluster=devnet`;
-}
+import { truncate } from "../lib/utils";
+import { TruncatedExplorerLink } from "./TruncatedExplorerLink";
 
 function CopyButton({ value }: { value: string }) {
   return (
@@ -87,14 +76,14 @@ function ListPager<T>({
 }
 
 function CampaignAdminCard({ record }: { record: CampaignRecord }) {
-  const status = getCampaignStatus(record.account);
+  const status = useCampaignStatus(record.account);
 
   return (
     <article className="rounded-xl border border-border-low bg-background/50 p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs text-muted">
-            {truncate(record.address, 8, 8)}
+            <TruncatedExplorerLink address={String(record.address)} />
           </p>
           <p className="mt-1 text-sm font-medium">
             {formatTokens(record.account.totalDeposit)} deposited
@@ -109,8 +98,10 @@ function CampaignAdminCard({ record }: { record: CampaignRecord }) {
       <dl className="grid grid-cols-2 gap-2 text-xs text-muted">
         <div>
           <dt>Mint</dt>
-          <dd className="font-mono text-foreground">
-            {truncate(record.account.mintToDistribute)}
+          <dd className="text-foreground">
+            <TruncatedExplorerLink
+              address={String(record.account.mintToDistribute)}
+            />
           </dd>
         </div>
         <div>
@@ -122,20 +113,12 @@ function CampaignAdminCard({ record }: { record: CampaignRecord }) {
         <div className="col-span-2">
           <dt>Claim window</dt>
           <dd className="font-mono text-[10px] text-foreground/90">
-            {formatTimestamp(record.account.start)} →{" "}
-            {formatTimestamp(record.account.end + record.account.gracePeriod)}
+            {formatCampaignTimestamp(record.account.start)} →{" "}
+            {formatCampaignTimestamp(record.account.end + record.account.gracePeriod)}
           </dd>
         </div>
       </dl>
       <div className="flex flex-wrap gap-2">
-        <a
-          href={explorerAddressUrl(record.address)}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs text-accent underline underline-offset-2"
-        >
-          Explorer
-        </a>
         <Link
           to="/app"
           className="text-xs text-muted hover:text-foreground transition"
@@ -154,7 +137,7 @@ function MintCard({ mint }: { mint: ProfileMint }) {
         <div>
           <p className="font-medium">{mint.label ?? "Distribution token"}</p>
           <p className="font-mono text-xs text-muted mt-0.5">
-            {truncate(String(mint.mint), 8, 8)}
+            <TruncatedExplorerLink address={String(mint.mint)} />
           </p>
         </div>
         <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent">
@@ -180,19 +163,13 @@ function MintCard({ mint }: { mint: ProfileMint }) {
         </div>
         <div>
           <dt>Campaigns</dt>
-          <dd className="font-mono text-foreground">{mint.campaignsUsingMint}</dd>
+          <dd className="font-mono text-foreground">
+            {mint.campaignsUsingMint}
+          </dd>
         </div>
       </dl>
       <div className="flex items-center gap-2">
         <CopyButton value={String(mint.mint)} />
-        <a
-          href={explorerAddressUrl(mint.mint)}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs text-accent underline underline-offset-2"
-        >
-          Explorer
-        </a>
       </div>
     </article>
   );
@@ -202,8 +179,7 @@ function PositionCard({ position }: { position: PositionRecord }) {
   const { campaign, attributes } = position;
   const pctClaimed =
     attributes.allocation > 0n
-      ? Number((attributes.claimedSoFar * 10000n) / attributes.allocation) /
-        100
+      ? Number((attributes.claimedSoFar * 10000n) / attributes.allocation) / 100
       : 0;
 
   return (
@@ -212,7 +188,8 @@ function PositionCard({ position }: { position: PositionRecord }) {
         <div>
           <p className="font-medium">Vesting position</p>
           <p className="font-mono text-xs text-muted mt-0.5">
-            Asset {truncate(position.asset, 8, 8)}
+            Asset{" "}
+            <TruncatedExplorerLink address={String(position.asset)} />
           </p>
         </div>
         <span
@@ -250,16 +227,18 @@ function PositionCard({ position }: { position: PositionRecord }) {
         </div>
         <div>
           <dt>Holder</dt>
-          <dd className="font-mono text-foreground">
-            {position.isOriginalRecipient && !position.transferredAway
-              ? "You"
-              : truncate(String(position.owner))}
+          <dd className="text-foreground">
+            {position.isOriginalRecipient && !position.transferredAway ? (
+              "You"
+            ) : (
+              <TruncatedExplorerLink address={String(position.owner)} />
+            )}
           </dd>
         </div>
         <div className="col-span-2">
           <dt>Campaign</dt>
-          <dd className="font-mono text-[10px] text-foreground/90">
-            {truncate(campaign.address, 8, 8)}
+          <dd className="text-[10px] text-foreground/90">
+            <TruncatedExplorerLink address={String(campaign.address)} />
           </dd>
         </div>
       </dl>
@@ -271,14 +250,6 @@ function PositionCard({ position }: { position: PositionRecord }) {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <a
-          href={explorerAddressUrl(position.asset)}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs text-accent underline underline-offset-2"
-        >
-          View asset
-        </a>
         <Link
           to="/app"
           className="text-xs text-muted hover:text-foreground transition"
@@ -323,7 +294,9 @@ export function ProfilePanel() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             Wallet profile
           </p>
-          <h2 className="text-2xl font-semibold tracking-tight">Your activity</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Your activity
+          </h2>
           {walletAddress && (
             <p className="font-mono text-sm text-muted">
               {truncate(String(walletAddress), 10, 10)}
@@ -437,7 +410,9 @@ export function ProfilePanel() {
             />
           </>
         ) : scanProgress.loading || (loading && !data) ? (
-          <p className="text-sm text-muted">Checking campaigns for positions…</p>
+          <p className="text-sm text-muted">
+            Checking campaigns for positions…
+          </p>
         ) : (
           <EmptyState message="No vesting positions found yet. Claim from a campaign to mint your first position." />
         )}

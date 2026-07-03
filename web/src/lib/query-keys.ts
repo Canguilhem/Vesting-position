@@ -5,6 +5,9 @@ export const queryKeys = {
   claimState: (campaign: string, user: string) =>
     ["claimState", campaign, user] as const,
 
+  campaignPosition: (campaign: string, user: string) =>
+    ["campaignPosition", campaign, user] as const,
+
   walletBalance: (wallet: string, mint: string) =>
     ["walletBalance", wallet, mint] as const,
 

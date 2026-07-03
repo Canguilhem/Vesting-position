@@ -5,13 +5,14 @@ import {
   buildClaimInstruction,
   getUserClaimState,
   parseProgramError,
-  type CampaignData,
+  type CampaignRecord,
 } from "../solana/vesting-positions";
 import type { Address } from "@solana/addresses";
 import {
   getMerkleProofForWallet,
   merkleRootMatchesCampaign,
 } from "../lib/merkle";
+import { fetchUserCampaignPosition } from "../solana/profile-data";
 import { useSendWalletTransaction } from "./useSendWalletTransaction";
 import { invalidateAfterOnChainWrite } from "../lib/invalidate-on-chain-queries";
 
@@ -23,31 +24,51 @@ function proofsToBytes(proofs: number[][]): Uint8Array[] {
   return proofs.map((step) => Uint8Array.from(step));
 }
 
-export function useClaim(campaignAddress: Address, campaign: CampaignData) {
+export type ClaimResult = {
+  signature: string;
+  explorerTxUrl: string;
+  /** Tokens received this claim (delta from on-chain position attribute). */
+  received: bigint;
+};
+
+export function useClaim(record: CampaignRecord) {
   const client = useSolanaClient();
   const queryClient = useQueryClient();
   const { sendWithWallet, isSending, signature, error, reset, isConnected } =
     useSendWalletTransaction();
   const [localError, setLocalError] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<ClaimResult | null>(null);
 
-  const claim = useCallback(async () => {
+  const claim = useCallback(async (): Promise<ClaimResult | null> => {
     if (!isConnected) {
       setLocalError("Connect a wallet first");
-      return;
+      return null;
     }
 
     setLocalError(null);
+    setLastResult(null);
     reset();
 
     try {
       let walletForInvalidation: string | undefined;
+      let userAddressForRefresh: Address | undefined;
+      let claimedBefore = 0n;
 
-      await sendWithWallet(async (walletSigner) => {
+      const sig = await sendWithWallet(async (walletSigner) => {
         const userAddress = walletSigner.address;
         walletForInvalidation = String(userAddress);
+        userAddressForRefresh = userAddress;
+
+        const positionBefore = await fetchUserCampaignPosition(
+          client.runtime.rpc,
+          userAddress,
+          record,
+        );
+        claimedBefore = positionBefore?.attributes.claimedSoFar ?? 0n;
+
         const { isFirstClaim } = await getUserClaimState(
           client.runtime.rpc,
-          campaignAddress,
+          record.address,
           userAddress,
         );
 
@@ -62,7 +83,10 @@ export function useClaim(campaignAddress: Address, campaign: CampaignData) {
             );
           }
           if (
-            !merkleRootMatchesCampaign(campaign.merkleRoot, merkle.merkleRoot)
+            !merkleRootMatchesCampaign(
+              record.account.merkleRoot,
+              merkle.merkleRoot,
+            )
           ) {
             throw new Error(
               "Campaign merkle root does not match the bundled allowlist.",
@@ -75,8 +99,8 @@ export function useClaim(campaignAddress: Address, campaign: CampaignData) {
         return [
           await buildClaimInstruction({
             user: walletSigner,
-            campaignAddress,
-            campaign,
+            campaignAddress: record.address,
+            campaign: record.account,
             isFirstClaim,
             proofs,
             allocation,
@@ -87,16 +111,48 @@ export function useClaim(campaignAddress: Address, campaign: CampaignData) {
       if (walletForInvalidation) {
         invalidateAfterOnChainWrite(queryClient, walletForInvalidation);
       }
+
+      if (!userAddressForRefresh) {
+        throw new Error("Wallet address missing after claim");
+      }
+
+      let positionAfter: Awaited<
+        ReturnType<typeof fetchUserCampaignPosition>
+      > = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        positionAfter = await fetchUserCampaignPosition(
+          client.runtime.rpc,
+          userAddressForRefresh,
+          record,
+        );
+        const claimedAfter = positionAfter?.attributes.claimedSoFar ?? 0n;
+        if (claimedAfter > claimedBefore) break;
+        if (attempt < 3) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+
+      const claimedAfter = positionAfter?.attributes.claimedSoFar ?? 0n;
+      const received =
+        claimedAfter > claimedBefore ? claimedAfter - claimedBefore : 0n;
+
+      const result: ClaimResult = {
+        signature: sig,
+        explorerTxUrl: explorerTxUrl(sig),
+        received,
+      };
+      setLastResult(result);
+      return result;
     } catch (err) {
       setLocalError(parseProgramError(err));
+      return null;
     }
   }, [
     isConnected,
     reset,
     sendWithWallet,
     client,
-    campaignAddress,
-    campaign,
+    record,
     queryClient,
   ]);
 
@@ -106,8 +162,10 @@ export function useClaim(campaignAddress: Address, campaign: CampaignData) {
     claim,
     isSending,
     signature,
+    lastResult,
     explorerTxUrl: signature ? explorerTxUrl(signature) : null,
     error: txError,
     canClaim: isConnected,
+    clearResult: () => setLastResult(null),
   };
 }

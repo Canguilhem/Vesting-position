@@ -1,11 +1,7 @@
 import type { Address } from "@solana/addresses";
 import type { InitializeResult } from "../lib/initialize";
 import { formatTokens } from "../lib/vesting";
-
-function truncate(value: string, head = 8, tail = 6): string {
-  if (value.length <= head + tail + 1) return value;
-  return `${value.slice(0, head)}…${value.slice(-tail)}`;
-}
+import { truncate } from "../lib/utils";
 
 function CopyRow({ label, value }: { label: string; value: string }) {
   return (
@@ -58,9 +54,8 @@ export function CampaignSuccessModal({
             Campaign initialized
           </h3>
           <p className="text-sm text-muted">
-            Deposited {formatTokens(result.totalDeposit)} tokens.
-            Recipients can claim after the start time if they are on the
-            allowlist.
+            Deposited {formatTokens(result.totalDeposit)} tokens. Recipients can
+            claim after the start time if they are on the allowlist.
           </p>
         </div>
 

@@ -18,6 +18,11 @@ export function invalidateAfterOnChainWrite(
       query.queryKey[0] === "claimState" && query.queryKey[2] === wallet,
   });
   void queryClient.invalidateQueries({
+    queryKey: ["campaignPosition"],
+    predicate: (query) =>
+      query.queryKey[0] === "campaignPosition" && query.queryKey[2] === wallet,
+  });
+  void queryClient.invalidateQueries({
     queryKey: ["walletBalance", wallet],
   });
 }

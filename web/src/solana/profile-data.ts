@@ -116,6 +116,14 @@ async function tryLoadPositionForWallet(
   return buildPositionRecord(asset, data, campaign, wallet);
 }
 
+export async function fetchUserCampaignPosition(
+  rpc: AppRpc,
+  wallet: Address,
+  campaign: CampaignRecord,
+): Promise<PositionRecord | null> {
+  return tryLoadPositionForWallet(rpc, wallet, campaign);
+}
+
 /**
  * Scan the next slice of campaigns for positions tied to `wallet` (via claim
  * receipt + asset PDA). Avoids mpl-core getProgramAccounts — O(batch) RPC calls

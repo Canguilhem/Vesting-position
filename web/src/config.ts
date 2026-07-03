@@ -6,3 +6,11 @@ export const RPC_ENDPOINT =
   import.meta.env.VITE_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 
 export const EXPLORER_PROGRAM_URL = `https://explorer.solana.com/address/${PROGRAM_ID}?cluster=devnet`;
+
+export function explorerAddressUrl(address: string): string {
+  return `https://explorer.solana.com/address/${address}?cluster=${CLUSTER}`;
+}
+
+export function explorerTxUrl(signature: string): string {
+  return `https://explorer.solana.com/tx/${signature}?cluster=${CLUSTER}`;
+}
