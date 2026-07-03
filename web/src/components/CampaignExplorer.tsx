@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Address } from "@solana/addresses";
 import { useCampaigns } from "../hooks/useCampaigns";
 import { CreateTokenPanel } from "./CreateTokenPanel";
-import { InitializeCampaign } from "./InitializeCampaign";
+import { LaunchCampaignWizard } from "./Launch/LaunchCampaignWizard";
 import CampaignCard from "./Campaigns/CampaignCard";
 import SelectedCampaignPanel from "./Campaigns/SelectedCampaignPanel";
 
@@ -29,9 +29,9 @@ export function CampaignExplorer() {
   };
 
   return (
-    <section className="space-y-6 p-6">
+    <section className="space-y-6 py-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
+        {/* <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             On-chain app
           </p>
@@ -39,10 +39,10 @@ export function CampaignExplorer() {
             Devnet campaigns
           </h2>
           <p className="max-w-2xl text-sm text-muted">
-            Browse campaigns, mint a distribution token, or launch a campaign
-            from your token supply.
+            Browse campaigns or launch a new one via the guided wizard (token →
+            allowlist → settings).
           </p>
-        </div>
+        </div> */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-border-low p-0.5">
             {(
@@ -82,7 +82,7 @@ export function CampaignExplorer() {
       {tab === "token" ? (
         <CreateTokenPanel onLaunchWithMint={handleLaunchWithMint} />
       ) : tab === "launch" ? (
-        <InitializeCampaign
+        <LaunchCampaignWizard
           prefilledMint={launchMint}
           onViewCampaign={handleViewCampaign}
         />

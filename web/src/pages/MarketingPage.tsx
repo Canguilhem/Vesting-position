@@ -81,7 +81,7 @@ export function MarketingPage() {
   }, []);
 
   return (
-    <main className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-16">
+    <main className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-10">
       <section className="mb-24 space-y-8">
         <div className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
           <span className="h-1.5 w-1.5 rounded-full bg-highlight animate-pulse" />
@@ -250,14 +250,6 @@ export function MarketingPage() {
               className="rounded-lg border border-border-low px-4 py-2 transition hover:border-accent/30"
             >
               Solana Explorer →
-            </a>
-            <a
-              href="https://turbin3.org"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-lg border border-border-low px-4 py-2 transition hover:border-accent/30"
-            >
-              Turbine Builder Cohort →
             </a>
           </div>
         </dl>

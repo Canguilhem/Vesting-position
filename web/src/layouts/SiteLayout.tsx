@@ -39,10 +39,7 @@ export function SiteLayout() {
                 <Link to="/" className={marketingNavClass(false)}>
                   Overview
                 </Link>
-                <Link
-                  to="/#calculator"
-                  className={marketingNavClass(false)}
-                >
+                <Link to="/#calculator" className={marketingNavClass(false)}>
                   Simulator
                 </Link>
                 <NavLink
@@ -95,7 +92,17 @@ export function SiteLayout() {
       <footer className="relative z-10 border-t border-border-low">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>Vesting Positions Protocol · MIT License</p>
-          <p>Built during Turbine Builder Cohort Q2 2026</p>
+          <p>
+            Built during{" "}
+            <a
+              className="text-accent hover:underline"
+              href="https://turbin3.org"
+              target="_blank"
+            >
+              Turbine
+            </a>{" "}
+            Builder Cohort Q2 2026
+          </p>
         </div>
       </footer>
     </div>

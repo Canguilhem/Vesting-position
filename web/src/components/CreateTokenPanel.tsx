@@ -46,8 +46,8 @@ export function CreateTokenPanel({
       <div className="space-y-2">
         <h3 className="text-lg font-semibold">Create distribution token</h3>
         <p className="max-w-2xl text-sm text-muted">
-          Mint a fresh SPL token to your wallet once, then launch multiple
-          campaigns that each deposit a slice of the supply. Example: mint{" "}
+          Mint a fresh SPL token to your wallet once, then launch campaigns from
+          the Launch tab wizard. Example: mint{" "}
           {formatTokenCount(DEFAULT_TOKEN_SUPPLY_TOKENS)} tokens, then run up to{" "}
           {Number(DEFAULT_TOKEN_SUPPLY_TOKENS / DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)}{" "}
           campaigns at {formatTokenCount(DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)} each.
