@@ -2,6 +2,8 @@
 export const queryKeys = {
   campaigns: () => ["campaigns"] as const,
 
+  campaignVault: (campaign: string) => ["campaignVault", campaign] as const,
+
   claimState: (campaign: string, user: string) =>
     ["claimState", campaign, user] as const,
 

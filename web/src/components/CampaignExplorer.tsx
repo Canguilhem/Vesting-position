@@ -31,18 +31,6 @@ export function CampaignExplorer() {
   return (
     <section className="space-y-6 py-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        {/* <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-            On-chain app
-          </p>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Devnet campaigns
-          </h2>
-          <p className="max-w-2xl text-sm text-muted">
-            Browse campaigns or launch a new one via the guided wizard (token →
-            allowlist → settings).
-          </p>
-        </div> */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-border-low p-0.5">
             {(

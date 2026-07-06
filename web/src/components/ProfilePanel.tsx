@@ -1,6 +1,9 @@
 import { useProfile } from "../hooks/useProfile";
-import { truncate } from "../lib/utils";
-import { EmptyState, ListPager } from "./Common/Common";
+import {
+  EmptyState,
+  ListPager,
+  TruncatedExplorerLink,
+} from "./Common/Common";
 import { MintCard } from "./Profile/MintCard";
 import { CampaignAdminCard } from "./Profile/CampaignAdminCard";
 import { PositionCard } from "./Profile/PositionCard";
@@ -42,8 +45,12 @@ export function ProfilePanel() {
             Your activity
           </h2>
           {walletAddress && (
-            <p className="font-mono text-sm text-muted">
-              {truncate(String(walletAddress), 10, 10)}
+            <p className="text-sm text-muted">
+              <TruncatedExplorerLink
+                address={String(walletAddress)}
+                head={10}
+                tail={10}
+              />
             </p>
           )}
         </div>

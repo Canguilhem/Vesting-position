@@ -4,6 +4,8 @@ import { QueryClient } from "@tanstack/react-query";
 export const QUERY_STALE = {
   /** Campaign list — new campaigns appear occasionally on devnet. */
   campaigns: 30_000,
+  /** Campaign vault ATA — changes on claims and clawbacks. */
+  campaignVault: 15_000,
   /** Claim receipt / asset existence per wallet+campaign. */
   claimState: 15_000,
   /** ATA balance for a mint. */

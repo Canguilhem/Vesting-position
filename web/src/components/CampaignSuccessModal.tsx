@@ -1,22 +1,19 @@
 import type { Address } from "@solana/addresses";
 import type { InitializeResult } from "../lib/initialize";
 import { formatTokens } from "../lib/vesting";
-import { truncate } from "../lib/utils";
+import {
+  ExplorerLinkButton,
+  TruncatedExplorerLink,
+  TruncatedTxLink,
+} from "./Common/Common";
 
-function CopyRow({ label, value }: { label: string; value: string }) {
+function AddressRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-3 rounded-lg border border-border-low bg-background/50 px-3 py-2">
-      <div className="min-w-0">
-        <dt className="text-xs text-muted">{label}</dt>
-        <dd className="mt-0.5 font-mono text-xs break-all">{value}</dd>
-      </div>
-      <button
-        type="button"
-        onClick={() => navigator.clipboard.writeText(value)}
-        className="shrink-0 rounded-md border border-border-low px-2 py-1 text-xs text-muted transition hover:border-accent/40 hover:text-foreground cursor-pointer"
-      >
-        Copy
-      </button>
+    <div className="rounded-lg border border-border-low bg-background/50 px-3 py-2">
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className="mt-0.5">
+        <TruncatedExplorerLink address={value} head={10} tail={10} />
+      </dd>
     </div>
   );
 }
@@ -60,9 +57,9 @@ export function CampaignSuccessModal({
         </div>
 
         <dl className="mt-5 space-y-2">
-          <CopyRow label="Campaign PDA" value={result.campaign} />
-          <CopyRow label="Collection" value={result.collection} />
-          <CopyRow label="Token mint" value={result.mint} />
+          <AddressRow label="Campaign PDA" value={result.campaign} />
+          <AddressRow label="Collection" value={result.collection} />
+          <AddressRow label="Token mint" value={result.mint} />
         </dl>
 
         {result.registryPersistError && (
@@ -92,15 +89,11 @@ export function CampaignSuccessModal({
           </p>
         )}
 
-        <div className="mt-5 flex flex-wrap gap-3">
-          <a
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <ExplorerLinkButton
             href={result.initializeExplorerUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-lg border border-border-low px-4 py-2 text-sm font-medium transition hover:border-accent/30"
-          >
-            View transaction
-          </a>
+            label="View transaction on explorer"
+          />
           {onViewCampaign && (
             <button
               type="button"
@@ -122,8 +115,9 @@ export function CampaignSuccessModal({
           </button>
         </div>
 
-        <p className="mt-4 font-mono text-[10px] text-muted break-all">
-          Tx: {truncate(result.initializeSignature, 12, 12)}
+        <p className="mt-4 flex flex-wrap items-center gap-2 text-[10px] text-muted">
+          <span>Tx</span>
+          <TruncatedTxLink signature={result.initializeSignature} head={12} tail={12} />
         </p>
       </div>
     </div>

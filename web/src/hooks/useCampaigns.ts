@@ -6,6 +6,7 @@ import {
   getUserClaimState,
   type CampaignRecord,
 } from "../solana/vesting-positions";
+import { fetchCampaignDistributionStats } from "../solana/campaign-vault";
 import { fetchUserCampaignPosition } from "../solana/profile-data";
 import {
   getCampaignStatus,
@@ -103,6 +104,24 @@ export function useCampaignPosition(
 
   return {
     position: query.data ?? null,
+    loading: query.isLoading || query.isFetching,
+    refresh: query.refetch,
+  };
+}
+
+export function useCampaignDistribution(record: CampaignRecord) {
+  const client = useSolanaClient();
+  const campaign = String(record.address);
+
+  const query = useQuery({
+    queryKey: queryKeys.campaignVault(campaign),
+    queryFn: () =>
+      fetchCampaignDistributionStats(client.runtime.rpc, record),
+    staleTime: QUERY_STALE.campaignVault,
+  });
+
+  return {
+    stats: query.data ?? null,
     loading: query.isLoading || query.isFetching,
     refresh: query.refetch,
   };

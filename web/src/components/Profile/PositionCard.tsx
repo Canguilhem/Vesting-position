@@ -5,7 +5,7 @@ import {
   CAMPAIGN_STATUS_COLORS,
   CAMPAIGN_STATUS_LABELS,
 } from "../../lib/campaign-status";
-import { TruncatedExplorerLink } from "../Common/Common";
+import { TruncatedExplorerLink, TruncatedTxLink } from "../Common/Common";
 import { formatTokens } from "../../lib/vesting";
 import { PositionRecord } from "../../hooks/useProfile";
 
@@ -41,7 +41,7 @@ function PositionCardBody({
 }) {
   const { campaign, attributes } = position;
   const [recipient, setRecipient] = useState("");
-  const { transfer, isSending, explorerTxUrl, error } =
+  const { transfer, isSending, signature, error } =
     useTransferPosition(position);
 
   const handleTransfer = () => {
@@ -139,15 +139,11 @@ function PositionCardBody({
             className="w-full rounded-md border border-border-low bg-background px-3 py-2 font-mono text-xs"
           />
           {error && <p className="text-xs text-red-200">{error}</p>}
-          {explorerTxUrl && (
-            <a
-              href={explorerTxUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-emerald-300 underline underline-offset-2"
-            >
-              Transfer confirmed — view transaction
-            </a>
+          {signature && (
+            <p className="flex flex-wrap items-center gap-2 text-xs text-emerald-300">
+              <span>Transfer confirmed</span>
+              <TruncatedTxLink signature={signature} head={10} tail={10} />
+            </p>
           )}
           <button
             type="button"

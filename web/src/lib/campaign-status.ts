@@ -40,6 +40,31 @@ export const TRANSFERABLE_PILL = {
   },
 } as const;
 
+/** 100% cliff release = full allocation at cliff (airdrop-style); otherwise linear vesting. */
+export type CampaignDistributionType = "airdrop" | "vesting";
+
+const FULL_CLIFF_RELEASE_BPS = 10_000;
+
+export function getCampaignDistributionType(
+  cliffReleaseBps: number,
+): CampaignDistributionType {
+  return cliffReleaseBps >= FULL_CLIFF_RELEASE_BPS ? "airdrop" : "vesting";
+}
+
+export const CAMPAIGN_TYPE_PILL: Record<
+  CampaignDistributionType,
+  { label: string; className: string }
+> = {
+  airdrop: {
+    label: "Airdrop",
+    className: "bg-violet-500/20 text-violet-300",
+  },
+  vesting: {
+    label: "Vesting",
+    className: "bg-indigo-500/20 text-indigo-300",
+  },
+};
+
 export function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))

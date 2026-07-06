@@ -1,7 +1,6 @@
 import { ProfileMint } from "../../hooks/useProfile";
 import { formatTokens } from "../../lib/vesting";
-import { CopyButton } from "../Common/Common";
-import { TruncatedExplorerLink } from "../TruncatedExplorerLink";
+import { TruncatedExplorerLink } from "../Common/Common";
 
 export function MintCard({ mint }: { mint: ProfileMint }) {
   return (
@@ -41,9 +40,6 @@ export function MintCard({ mint }: { mint: ProfileMint }) {
           </dd>
         </div>
       </dl>
-      <div className="flex items-center gap-2">
-        <CopyButton value={String(mint.mint)} />
-      </div>
     </article>
   );
 }

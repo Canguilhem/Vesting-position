@@ -9,6 +9,10 @@ import { createDefaultCreateTokenFormValues } from "../lib/create-token";
 import { formatTokenCount, formatTokens } from "../lib/vesting";
 import { useCreateToken } from "../hooks/useCreateToken";
 import { fieldClassName, labelClassName } from "./form-styles";
+import {
+  TruncatedExplorerLink,
+  TruncatedTxLink,
+} from "./Common/Common";
 
 export function CreateTokenPanel({
   onLaunchWithMint,
@@ -140,17 +144,12 @@ export function CreateTokenPanel({
       {lastResult && (
         <div className="space-y-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
           <p className="text-sm font-medium text-emerald-200">Token created</p>
-          <p className="font-mono text-xs break-all">{lastResult.mint}</p>
-          <p className="text-xs text-muted">
-            Supply: {formatTokens(lastResult.supply)} tokens ·{" "}
-            <a
-              href={lastResult.explorerUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="underline underline-offset-2"
-            >
-              View transaction
-            </a>
+          <p className="text-xs">
+            <TruncatedExplorerLink address={String(lastResult.mint)} />
+          </p>
+          <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
+            <span>Supply: {formatTokens(lastResult.supply)} tokens</span>
+            <TruncatedTxLink signature={lastResult.signature} head={10} tail={10} />
           </p>
           <div className="flex flex-wrap gap-2">
             {onLaunchWithMint && (

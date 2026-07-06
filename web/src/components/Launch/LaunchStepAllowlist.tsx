@@ -7,6 +7,8 @@ import {
 } from "../../lib/allow-list";
 import { isSupabaseConfigured } from "../../lib/supabase";
 import { formatTokens } from "../../lib/vesting";
+import { CopyButton } from "../Common/Common";
+import { truncate } from "../../lib/utils";
 
 export function LaunchStepAllowlist({
   snapshot,
@@ -134,8 +136,14 @@ export function LaunchStepAllowlist({
             </div>
             <div className="sm:col-span-3">
               <dt className="text-xs text-muted">Merkle root</dt>
-              <dd className="font-mono text-xs break-all">
-                {snapshot.merkleRoot}
+              <dd className="inline-flex items-center gap-1 font-mono text-xs">
+                <span title={snapshot.merkleRoot}>
+                  {truncate(snapshot.merkleRoot, 12, 12)}
+                </span>
+                <CopyButton
+                  value={snapshot.merkleRoot}
+                  label="Copy merkle root"
+                />
               </dd>
             </div>
           </dl>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useWalletConnection } from "@solana/react-hooks";
 import type { CampaignRecord } from "../../hooks/useCampaigns";
 import { useCampaignAdmin } from "../../hooks/useCampaignAdmin";
+import { TruncatedTxLink } from "../Common/Common";
 
 type Props = {
   record: CampaignRecord;
@@ -71,7 +72,7 @@ const inputClass =
 
 export function CampaignAdminPanel({ record }: Props) {
   const { wallet, status } = useWalletConnection();
-  const { run, isSending, signature, explorerTxUrl, error } =
+  const { run, isSending, signature, error } =
     useCampaignAdmin(record);
 
   const [selectedId, setSelectedId] = useState<AdminActionId | "">("");
@@ -102,17 +103,10 @@ export function CampaignAdminPanel({ record }: Props) {
         </p>
       )}
 
-      {signature && explorerTxUrl && (
+      {signature && (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm space-y-1">
           <p className="font-medium text-emerald-200">Transaction confirmed</p>
-          <a
-            href={explorerTxUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-          >
-            View on Explorer
-          </a>
+          <TruncatedTxLink signature={signature} head={10} tail={10} />
         </div>
       )}
 

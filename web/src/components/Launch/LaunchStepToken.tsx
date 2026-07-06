@@ -19,6 +19,7 @@ import { formatTokenCount, formatTokens } from "../../lib/vesting";
 import { useCreateToken } from "../../hooks/useCreateToken";
 import { useWalletTokenBalance } from "../../hooks/useWalletTokenBalance";
 import { fieldClassName, labelClassName } from "../form-styles";
+import { TruncatedExplorerLink } from "../Common/Common";
 
 export type TokenStepMode = "existing" | "create";
 
@@ -184,7 +185,7 @@ export const LaunchStepToken = forwardRef<
           {tokenAlreadyCreated ? (
             <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
               Token created — mint{" "}
-              <span className="font-mono text-xs break-all">{mint}</span>
+              <TruncatedExplorerLink address={mint} head={10} tail={10} />
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">

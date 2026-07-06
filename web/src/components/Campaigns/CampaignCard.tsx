@@ -3,14 +3,17 @@ import {
   bytesToHex,
   CAMPAIGN_STATUS_COLORS,
   CAMPAIGN_STATUS_LABELS,
+  CAMPAIGN_TYPE_PILL,
   formatCampaignTimestamp,
   formatDurationSec,
+  getCampaignDistributionType,
   TRANSFERABLE_PILL,
 } from "../../lib/campaign-status";
-import { useCampaignStatus } from "../../hooks/useCampaigns";
-import { TruncatedExplorerLink } from "../TruncatedExplorerLink";
+import { useCampaignStatus, useCampaignDistribution } from "../../hooks/useCampaigns";
+import { TruncatedExplorerLink } from "../Common/Common";
 import { truncate } from "../../lib/utils";
 import { formatPercent, formatTokens } from "../../lib/vesting";
+import { distributionPercent } from "../../solana/campaign-vault";
 
 type Props = {
   record: CampaignRecord;
@@ -21,7 +24,9 @@ type Props = {
 const CampaignCard = ({ record, onSelect, selected }: Props) => {
   const { account, address } = record;
   const status = useCampaignStatus(account);
+  const { stats, loading: distributionLoading } = useCampaignDistribution(record);
   const transferPill = TRANSFERABLE_PILL[String(account.isTransferable) as "true" | "false"];
+  const typePill = CAMPAIGN_TYPE_PILL[getCampaignDistributionType(account.cliffReleaseBps)];
   const merkleRoot = bytesToHex(account.merkleRoot);
   const claimWindowEnd = account.end + account.gracePeriod;
   const vestingSec = account.end - account.start;
@@ -45,10 +50,22 @@ const CampaignCard = ({ record, onSelect, selected }: Props) => {
             />
           </p>
           <p className="mt-1 text-sm font-medium">
-            {formatTokens(account.totalDeposit)} tokens locked
+            {formatTokens(account.totalDeposit)} tokens deposited
+          </p>
+          <p className="mt-0.5 text-xs text-muted">
+            {distributionLoading
+              ? "Checking vault…"
+              : stats
+                ? `${formatTokens(stats.distributed)} distributed (${distributionPercent(stats.distributed, stats.totalDeposit).toFixed(1)}%)`
+                : null}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${typePill.className}`}
+          >
+            {typePill.label}
+          </span>
           <span
             className={`rounded-full px-2.5 py-1 text-xs font-medium ${transferPill.className}`}
           >

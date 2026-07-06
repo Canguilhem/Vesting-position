@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { EXPLORER_PROGRAM_URL, PROGRAM_ID } from "../config";
 import { VestingCalculator } from "../components/VestingCalculator";
 import { ClaimingWindowTimeline } from "../components/ClaimingWindowTimeline";
+import { ExternalLinkIcon, TruncatedExplorerLink } from "../components/Common/Common";
 
 const FEATURES = [
   {
@@ -60,18 +61,6 @@ const STEPS = [
   },
 ] as const;
 
-function CopyButton({ value }: { value: string }) {
-  return (
-    <button
-      type="button"
-      onClick={() => navigator.clipboard.writeText(value)}
-      className="rounded-md border border-border-low px-2 py-1 text-xs text-muted transition hover:border-accent/40 hover:text-foreground cursor-pointer"
-    >
-      Copy
-    </button>
-  );
-}
-
 export function MarketingPage() {
   useEffect(() => {
     const hash = window.location.hash;
@@ -118,8 +107,9 @@ export function MarketingPage() {
             href={EXPLORER_PROGRAM_URL}
             target="_blank"
             rel="noreferrer"
-            className="rounded-xl border border-border-low bg-card px-5 py-3 text-sm font-semibold transition hover:border-accent/30"
+            className="inline-flex items-center gap-2 rounded-xl border border-border-low bg-card px-5 py-3 text-sm font-semibold transition hover:border-accent/30"
           >
+            <ExternalLinkIcon size={16} />
             View on Explorer
           </a>
         </div>
@@ -229,14 +219,13 @@ export function MarketingPage() {
         </div>
 
         <dl className="mt-6 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-low bg-background/60 px-4 py-3">
-            <div>
-              <dt className="text-xs text-muted">Program ID (devnet)</dt>
-              <dd className="mt-1 font-mono text-sm break-all">{PROGRAM_ID}</dd>
-            </div>
-            <CopyButton value={PROGRAM_ID} />
+          <div className="rounded-lg border border-border-low bg-background/60 px-4 py-3">
+            <dt className="text-xs text-muted">Program ID (devnet)</dt>
+            <dd className="mt-1">
+              <TruncatedExplorerLink address={PROGRAM_ID} head={12} tail={12} />
+            </dd>
           </div>
-          <div className="flex flex-wrap gap-3 text-sm">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
             <Link
               to="/app"
               className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-2 font-medium text-accent transition hover:bg-accent/15"
@@ -247,9 +236,10 @@ export function MarketingPage() {
               href={EXPLORER_PROGRAM_URL}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-border-low px-4 py-2 transition hover:border-accent/30"
+              className="inline-flex items-center gap-2 rounded-lg border border-border-low px-4 py-2 transition hover:border-accent/30"
             >
-              Solana Explorer →
+              <ExternalLinkIcon size={14} />
+              Solana Explorer
             </a>
           </div>
         </dl>

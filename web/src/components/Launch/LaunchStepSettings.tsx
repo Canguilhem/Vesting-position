@@ -15,6 +15,7 @@ import { formatTokenCount, formatTokens, rawToTokens } from "../../lib/vesting";
 import { useClusterTime } from "../../hooks/useClusterTime";
 import { useWalletTokenBalance } from "../../hooks/useWalletTokenBalance";
 import { fieldClassName, labelClassName } from "../form-styles";
+import { TruncatedExplorerLink } from "../Common/Common";
 
 type CampaignFormInstance = ReactFormExtendedApi<
   CampaignFormValues,
@@ -75,7 +76,13 @@ export function LaunchStepSettings({
         <dl className="grid gap-2 sm:grid-cols-2">
           <div>
             <dt className="text-xs text-muted">Token mint</dt>
-            <dd className="font-mono text-xs break-all">{mint || "—"}</dd>
+            <dd className="text-xs">
+              {mint ? (
+                <TruncatedExplorerLink address={mint} head={10} tail={10} />
+              ) : (
+                "—"
+              )}
+            </dd>
           </div>
           <div>
             <dt className="text-xs text-muted">Allowlist recipients</dt>

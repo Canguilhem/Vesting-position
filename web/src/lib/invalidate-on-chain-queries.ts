@@ -7,6 +7,7 @@ export function invalidateAfterOnChainWrite(
   wallet?: string,
 ): void {
   void queryClient.invalidateQueries({ queryKey: queryKeys.campaigns() });
+  void queryClient.invalidateQueries({ queryKey: ["campaignVault"] });
 
   if (!wallet) return;
 

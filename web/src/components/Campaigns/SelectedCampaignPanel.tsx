@@ -4,13 +4,18 @@ import {
   type CampaignRecord,
   useCampaignPosition,
   useCampaignStatus,
+  useCampaignDistribution,
   useUserClaimState,
 } from "../../hooks/useCampaigns";
 import { useClaim } from "../../hooks/useClaim";
 import { useMerkleAllowlist } from "../../hooks/useMerkleAllowlist";
 import { formatCampaignTimestamp } from "../../lib/campaign-status";
-import { TruncatedExplorerLink } from "../TruncatedExplorerLink";
+import {
+  TruncatedExplorerLink,
+  TruncatedTxLink,
+} from "../Common/Common";
 import { formatTokens, computeVesting } from "../../lib/vesting";
+import { distributionPercent } from "../../solana/campaign-vault";
 
 type Props = {
   record: CampaignRecord;
@@ -77,6 +82,9 @@ const SelectedCampaignPanel = ({ record }: Props) => {
     record.account.merkleRoot,
   );
 
+  const { stats: distribution, loading: distributionLoading, refresh: refreshDistribution } =
+    useCampaignDistribution(record);
+
   const campaignStatus = useCampaignStatus(record.account);
   const holdsAsset =
     position != null &&
@@ -115,6 +123,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
   const refreshAll = () => {
     void refreshClaimState();
     void refreshPosition();
+    void refreshDistribution();
   };
 
   return (
@@ -193,6 +202,16 @@ const SelectedCampaignPanel = ({ record }: Props) => {
       )}
 
       <dl className="grid gap-2 text-sm">
+        <div className="flex justify-between gap-4">
+          <dt className="text-muted">Distributed (all wallets)</dt>
+          <dd className="text-right font-mono text-xs">
+            {distributionLoading
+              ? "Checking vault…"
+              : distribution
+                ? `${formatTokens(distribution.distributed)} / ${formatTokens(distribution.totalDeposit)} (${distributionPercent(distribution.distributed, distribution.totalDeposit).toFixed(1)}%)`
+                : "—"}
+          </dd>
+        </div>
         <div className="flex justify-between gap-4">
           <dt className="text-muted">Window</dt>
           <dd className="text-right font-mono text-xs">
@@ -278,14 +297,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
             Claim confirmed — received{" "}
             {formatTokens(Number(lastResult.received))} tokens
           </p>
-          <a
-            href={lastResult.explorerTxUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-          >
-            View transaction on Explorer
-          </a>
+          <TruncatedTxLink signature={lastResult.signature} head={10} tail={10} />
           <div>
             <button
               type="button"
