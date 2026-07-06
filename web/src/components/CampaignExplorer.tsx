@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { Address } from "@solana/addresses";
 import { useCampaigns } from "../hooks/useCampaigns";
+import { tryParseAddress } from "../lib/utils";
 import { CreateTokenPanel } from "./CreateTokenPanel";
 import { LaunchCampaignWizard } from "./Launch/LaunchCampaignWizard";
 import CampaignCard from "./Campaigns/CampaignCard";
@@ -8,9 +10,29 @@ import SelectedCampaignPanel from "./Campaigns/SelectedCampaignPanel";
 
 export function CampaignExplorer() {
   const { campaigns, loading, error, refresh } = useCampaigns();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState<Address | null>(null);
   const [tab, setTab] = useState<"browse" | "token" | "launch">("browse");
   const [launchMint, setLaunchMint] = useState<Address | null>(null);
+
+  const campaignParam = searchParams.get("campaign");
+
+  useEffect(() => {
+    if (!campaignParam || campaigns.length === 0) return;
+    const parsed = tryParseAddress(campaignParam);
+    if (!parsed) return;
+    const match = campaigns.find((c) => String(c.address) === String(parsed));
+    if (match) {
+      setSelected(match.address);
+      setTab("browse");
+    }
+  }, [campaignParam, campaigns]);
+
+  const selectCampaign = (campaignAddress: Address) => {
+    setSelected(campaignAddress);
+    setTab("browse");
+    setSearchParams({ campaign: String(campaignAddress) }, { replace: true });
+  };
 
   const selectedRecord = selected
     ? campaigns.find((c) => c.address === selected)
@@ -18,8 +40,7 @@ export function CampaignExplorer() {
 
   const handleViewCampaign = (campaignAddress: Address) => {
     void refresh().then(() => {
-      setSelected(campaignAddress);
-      setTab("browse");
+      selectCampaign(campaignAddress);
     });
   };
 
@@ -103,7 +124,7 @@ export function CampaignExplorer() {
                       key={c.address}
                       record={c}
                       selected={selected === c.address}
-                      onSelect={() => setSelected(c.address)}
+                      onSelect={() => selectCampaign(c.address)}
                     />
                   ))}
                 </div>

@@ -7,6 +7,7 @@ import {
 } from "../../lib/campaign-status";
 import { TruncatedExplorerLink } from "../Common/Common";
 import { CampaignRecord, useCampaignStatus } from "../../hooks/useCampaigns";
+import { appCampaignUrl } from "../../lib/app-routes";
 import { useState } from "react";
 import { CampaignAdminPanel } from "../Campaigns/CampaignAdminPanel";
 
@@ -65,10 +66,10 @@ export function CampaignAdminCard({ record }: { record: CampaignRecord }) {
           {manageOpen ? "Hide admin" : "Manage campaign"}
         </button>
         <Link
-          to="/app"
+          to={appCampaignUrl(String(record.address))}
           className="rounded-md px-2.5 py-1 text-xs text-muted hover:text-foreground transition"
         >
-          Claim in app →
+          Open in app →
         </Link>
       </div>
 

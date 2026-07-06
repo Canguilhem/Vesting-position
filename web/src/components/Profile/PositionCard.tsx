@@ -7,6 +7,7 @@ import {
 } from "../../lib/campaign-status";
 import { TruncatedExplorerLink, TruncatedTxLink } from "../Common/Common";
 import { formatTokens } from "../../lib/vesting";
+import { appCampaignUrl } from "../../lib/app-routes";
 import { PositionRecord } from "../../hooks/useProfile";
 
 export function PositionCard({ position }: { position: PositionRecord }) {
@@ -41,13 +42,22 @@ function PositionCardBody({
 }) {
   const { campaign, attributes } = position;
   const [recipient, setRecipient] = useState("");
+  const [showTransferForm, setShowTransferForm] = useState(false);
   const { transfer, isSending, signature, error } =
     useTransferPosition(position);
 
   const handleTransfer = () => {
     void transfer(recipient).then((sig) => {
-      if (sig) setRecipient("");
+      if (sig) {
+        setRecipient("");
+        setShowTransferForm(false);
+      }
     });
+  };
+
+  const closeTransferForm = () => {
+    setShowTransferForm(false);
+    setRecipient("");
   };
 
   return (
@@ -122,11 +132,21 @@ function PositionCardBody({
         </p>
       )}
 
-      {canTransfer && (
+      {canTransfer && showTransferForm && (
         <div className="rounded-lg border border-border-low bg-card/40 px-3 py-3 space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">
-            Transfer position
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">
+              Transfer position
+            </p>
+            <button
+              type="button"
+              onClick={closeTransferForm}
+              disabled={isSending}
+              className="text-xs text-muted transition hover:text-foreground disabled:opacity-50 cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
           <p className="text-xs text-muted">
             Send the position NFT to another wallet. The recipient can claim
             vested tokens while they hold the NFT.
@@ -156,13 +176,22 @@ function PositionCardBody({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <Link
-          to="/app"
+          to={appCampaignUrl(String(campaign.address))}
           className="text-xs text-muted hover:text-foreground transition"
         >
           Claim in app →
         </Link>
+        {canTransfer && !showTransferForm && (
+          <button
+            type="button"
+            onClick={() => setShowTransferForm(true)}
+            className="text-xs font-medium text-accent transition hover:brightness-110 cursor-pointer"
+          >
+            Transfer
+          </button>
+        )}
       </div>
     </article>
   );
