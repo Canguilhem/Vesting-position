@@ -9,6 +9,7 @@ import {
   parseAssetCollection,
   parseAssetOwner,
   parsePositionAttributes,
+  isPositionFrozen,
   type ParsedPositionAttributes,
 } from "../lib/mpl-core-asset";
 import { computeVesting } from "../lib/vesting";
@@ -32,6 +33,8 @@ export type PositionRecord = {
   claimable: number;
   totalVested: number;
   fullyVested: boolean;
+  /** mpl-core freeze — loyalty badge or non-transferable collection. */
+  isFrozen: boolean;
   isOriginalRecipient: boolean;
   campaignStatus: ReturnType<typeof getCampaignStatus>;
   /** True when you minted but no longer hold the NFT. */
@@ -87,6 +90,7 @@ function buildPositionRecord(
     claimable: vesting.claimable,
     totalVested: vesting.totalVested,
     fullyVested: vesting.fullyVested,
+    isFrozen: isPositionFrozen(data, campaign.account.isTransferable),
     isOriginalRecipient,
     transferredAway:
       isOriginalRecipient && String(owner) !== String(wallet),

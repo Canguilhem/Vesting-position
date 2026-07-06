@@ -9,7 +9,10 @@ import {
   getCampaignDistributionType,
   TRANSFERABLE_PILL,
 } from "../../lib/campaign-status";
-import { useCampaignStatus, useCampaignDistribution } from "../../hooks/useCampaigns";
+import {
+  useCampaignStatus,
+  useCampaignDistribution,
+} from "../../hooks/useCampaigns";
 import { TruncatedExplorerLink } from "../Common/Common";
 import { truncate } from "../../lib/utils";
 import { formatPercent, formatTokens } from "../../lib/vesting";
@@ -21,12 +24,31 @@ type Props = {
   selected: boolean;
 };
 
+function TraitBadge({
+  label,
+  className,
+}: {
+  label: string;
+  className: string;
+}) {
+  return (
+    <span
+      className={`rounded-md border border-border-low px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${className}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 const CampaignCard = ({ record, onSelect, selected }: Props) => {
   const { account, address } = record;
   const status = useCampaignStatus(account);
-  const { stats, loading: distributionLoading } = useCampaignDistribution(record);
-  const transferPill = TRANSFERABLE_PILL[String(account.isTransferable) as "true" | "false"];
-  const typePill = CAMPAIGN_TYPE_PILL[getCampaignDistributionType(account.cliffReleaseBps)];
+  const { stats, loading: distributionLoading } =
+    useCampaignDistribution(record);
+  const transferPill =
+    TRANSFERABLE_PILL[String(account.isTransferable) as "true" | "false"];
+  const typePill =
+    CAMPAIGN_TYPE_PILL[getCampaignDistributionType(account.cliffReleaseBps)];
   const merkleRoot = bytesToHex(account.merkleRoot);
   const claimWindowEnd = account.end + account.gracePeriod;
   const vestingSec = account.end - account.start;
@@ -42,44 +64,43 @@ const CampaignCard = ({ record, onSelect, selected }: Props) => {
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-mono text-xs text-muted">
-            <TruncatedExplorerLink
-              address={String(address)}
-              stopPropagation
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${CAMPAIGN_STATUS_COLORS[status]}`}
+        >
+          {CAMPAIGN_STATUS_LABELS[status]}
+        </span>
+        <div className="flex min-w-0 flex-col items-end gap-1.5">
+          <TruncatedExplorerLink
+            address={String(address)}
+            head={6}
+            tail={6}
+            stopPropagation
+            className="text-muted"
+          />
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <TraitBadge label={typePill.label} className={typePill.className} />
+            <TraitBadge
+              label={transferPill.label}
+              className={transferPill.className}
             />
-          </p>
-          <p className="mt-1 text-sm font-medium">
-            {formatTokens(account.totalDeposit)} tokens deposited
-          </p>
-          <p className="mt-0.5 text-xs text-muted">
-            {distributionLoading
-              ? "Checking vault…"
-              : stats
-                ? `${formatTokens(stats.distributed)} distributed (${distributionPercent(stats.distributed, stats.totalDeposit).toFixed(1)}%)`
-                : null}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-          <span
-            className={`rounded-full px-2.5 py-1 text-xs font-medium ${typePill.className}`}
-          >
-            {typePill.label}
-          </span>
-          <span
-            className={`rounded-full px-2.5 py-1 text-xs font-medium ${transferPill.className}`}
-          >
-            {transferPill.label}
-          </span>
-          <span
-            className={`rounded-full px-2.5 py-1 text-xs font-medium ${CAMPAIGN_STATUS_COLORS[status]}`}
-          >
-            {CAMPAIGN_STATUS_LABELS[status]}
-          </span>
+          </div>
         </div>
       </div>
 
-      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted">
+      <div className="mt-3 space-y-0.5">
+        <p className="text-sm font-semibold text-foreground">
+          {formatTokens(account.totalDeposit)} tokens deposited
+        </p>
+        <p className="text-xs text-muted">
+          {distributionLoading
+            ? "Checking vault…"
+            : stats
+              ? `${formatTokens(stats.distributed)} distributed (${distributionPercent(stats.distributed, stats.totalDeposit).toFixed(1)}%)`
+              : "—"}
+        </p>
+      </div>
+
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-border-low/60 pt-3 text-xs text-muted">
         <div className="col-span-2">
           <dt>Claim window</dt>
           <dd className="mt-0.5 text-foreground">

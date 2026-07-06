@@ -19,6 +19,7 @@ export function PositionCard({ position }: { position: PositionRecord }) {
 
   const canTransfer =
     !position.transferredAway &&
+    !position.isFrozen &&
     campaign.account.isTransferable &&
     attributes.claimedSoFar < attributes.allocation;
 
@@ -60,6 +61,15 @@ function PositionCardBody({
     setRecipient("");
   };
 
+  const fullyClaimed = attributes.claimedSoFar >= attributes.allocation;
+  const statusNote = position.isFrozen
+    ? fullyClaimed
+      ? "Loyalty badge — frozen on-chain."
+      : "Position NFT is frozen — transfers paused."
+    : position.fullyVested && !fullyClaimed
+      ? "Fully vested — freezes permanently after your final claim."
+      : null;
+
   return (
     <article className="rounded-xl border border-border-low bg-background/50 p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -69,11 +79,19 @@ function PositionCardBody({
             Asset <TruncatedExplorerLink address={String(position.asset)} />
           </p>
         </div>
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-medium ${CAMPAIGN_STATUS_COLORS[position.campaignStatus]}`}
-        >
-          {CAMPAIGN_STATUS_LABELS[position.campaignStatus]}
-        </span>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          {position.isFrozen ? (
+            <span className="rounded-full bg-zinc-500/20 px-2.5 py-1 text-xs font-medium text-zinc-400">
+              Frozen
+            </span>
+          ) : (
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ${CAMPAIGN_STATUS_COLORS[position.campaignStatus]}`}
+            >
+              {CAMPAIGN_STATUS_LABELS[position.campaignStatus]}
+            </span>
+          )}
+        </div>
       </div>
 
       {position.transferredAway && (
@@ -126,10 +144,8 @@ function PositionCardBody({
         </div>
       </dl>
 
-      {position.fullyVested && (
-        <p className="text-xs text-amber-200/90">
-          Fully vested — position may be frozen as a loyalty badge.
-        </p>
+      {statusNote && (
+        <p className="text-xs text-amber-200/90">{statusNote}</p>
       )}
 
       {canTransfer && showTransferForm && (
