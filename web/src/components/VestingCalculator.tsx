@@ -133,8 +133,9 @@ export function VestingCalculator() {
           Vesting schedule simulator
         </h2>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Same formula as on-chain: cliff release plus linear vesting from cliff
-          to end. Drag the timeline to see claimable amounts change over time.
+          {/* Same formula as on-chain: cliff release plus linear vesting from cliff
+          to end.  */}
+          Drag the timeline to see claimable amounts change over time.
         </p>
       </div>
 

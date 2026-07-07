@@ -10,10 +10,7 @@ import {
 import { useClaim } from "../../hooks/useClaim";
 import { useMerkleAllowlist } from "../../hooks/useMerkleAllowlist";
 import { formatCampaignTimestamp } from "../../lib/campaign-status";
-import {
-  TruncatedExplorerLink,
-  TruncatedTxLink,
-} from "../Common/Common";
+import { TruncatedExplorerLink, TruncatedTxLink } from "../Common/Common";
 import { formatTokens, computeVesting } from "../../lib/vesting";
 import { distributionPercent } from "../../solana/campaign-vault";
 
@@ -79,11 +76,14 @@ const SelectedCampaignPanel = ({ record }: Props) => {
   const { allowlist, loading: allowlistLoading } = useMerkleAllowlist(
     String(record.address),
     userAddress,
-    record.account.merkleRoot,
+    record.account.merkleRoot
   );
 
-  const { stats: distribution, loading: distributionLoading, refresh: refreshDistribution } =
-    useCampaignDistribution(record);
+  const {
+    stats: distribution,
+    loading: distributionLoading,
+    refresh: refreshDistribution,
+  } = useCampaignDistribution(record);
 
   const campaignStatus = useCampaignStatus(record.account);
   const holdsAsset =
@@ -132,8 +132,8 @@ const SelectedCampaignPanel = ({ record }: Props) => {
         <h3 className="text-lg font-semibold">Claim vested tokens</h3>
         <p className="text-sm text-muted">
           {effectiveFirstClaim
-            ? "First claim mints your position NFT and releases vested tokens."
-            : "Subsequent claim: no Merkle proof required."}
+            ? "Provide merkle proofs and get your position minted"
+            : "No Merkle proof required, claim via your position"}
         </p>
       </div>
 
@@ -297,7 +297,11 @@ const SelectedCampaignPanel = ({ record }: Props) => {
             Claim confirmed — received{" "}
             {formatTokens(Number(lastResult.received))} tokens
           </p>
-          <TruncatedTxLink signature={lastResult.signature} head={10} tail={10} />
+          <TruncatedTxLink
+            signature={lastResult.signature}
+            head={10}
+            tail={10}
+          />
           <div>
             <button
               type="button"

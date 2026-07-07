@@ -54,3 +54,9 @@ export function ListPager<T>({
     </div>
   );
 }
+
+export function navLinkClass(isActive: boolean): string {
+  return isActive
+    ? "text-foreground"
+    : "text-muted transition hover:text-foreground";
+}
