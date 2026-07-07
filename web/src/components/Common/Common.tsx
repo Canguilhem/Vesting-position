@@ -1,16 +1,29 @@
 import { PageSlice } from "../../lib/pagination";
+import { Button } from "@/components/ui/button";
+import { AppCard } from "./AppCard";
 
 export { CopyButton } from "./CopyButton";
 export { ExplorerLinkButton } from "./ExplorerLinkButton";
 export { TruncatedExplorerLink } from "./TruncatedExplorerLink";
 export { TruncatedTxLink } from "./TruncatedTxLink";
 export { CopyIcon, ExternalLinkIcon, iconActionClass } from "./icons";
+export { AppCard, AppCardButton, AppCallout } from "./AppCard";
+export {
+  EntityCard,
+  EntityCardButton,
+  EntityCardContent,
+  EntityCardFooter,
+  EntityCardHeader,
+  EntityCardMeta,
+} from "./EntityCard";
+export { PageHeader, SectionHeader } from "./PageHeader";
+export { GradientOutlineBadge } from "./GradientOutlineBadge";
 
 export function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-border-low px-4 py-8 text-center text-sm text-muted">
+    <AppCard variant="dashed" padding="lg" className="items-center justify-center">
       {message}
-    </div>
+    </AppCard>
   );
 }
 
@@ -27,28 +40,30 @@ export function ListPager<T>({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted-foreground">
         {label}: page {slice.page + 1} of {slice.totalPages} ({slice.total}{" "}
         total)
       </p>
       {slice.totalPages > 1 && (
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
+            size="xs"
+            variant="outline"
             disabled={!slice.hasPrev}
             onClick={() => onPageChange(slice.page - 1)}
-            className="rounded-md border border-border-low px-2.5 py-1 text-xs transition hover:border-accent/30 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
           >
             Previous
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="xs"
+            variant="outline"
             disabled={!slice.hasNext}
             onClick={() => onPageChange(slice.page + 1)}
-            className="rounded-md border border-border-low px-2.5 py-1 text-xs transition hover:border-accent/30 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
           >
             Next
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -58,5 +73,5 @@ export function ListPager<T>({
 export function navLinkClass(isActive: boolean): string {
   return isActive
     ? "text-foreground"
-    : "text-muted transition hover:text-foreground";
+    : "text-muted-foreground transition hover:text-foreground";
 }

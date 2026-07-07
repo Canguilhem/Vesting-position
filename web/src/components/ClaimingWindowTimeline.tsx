@@ -3,12 +3,14 @@
  * Proportions are schematic (not tied to a real campaign).
  */
 
+import { AppCard } from "./Common/AppCard";
+import { GradientOutlineBadge } from "./Common/GradientOutlineBadge";
+
 const VESTING_PCT = 62;
 const GRACE_PCT = 23;
 const GRACE_END_PCT = VESTING_PCT + GRACE_PCT;
 /** Cliff sits early in the vesting segment (schematic). */
 const CLIFF_PCT = 10;
-const NOW_PCT = 38;
 
 /** Example defaults — matches typical devnet campaign form. */
 const EXAMPLE_CLIFF_RELEASE_BPS = 1000;
@@ -18,32 +20,36 @@ const PHASES = [
     key: "vesting",
     title: "Vesting",
     badge: "Claims open",
-    badgeClass: "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30",
+    gradient: "from-emerald-500 to-chart-2",
     recipient:
-      "After start, wait out the cliff (if any) — then claim the cliff release % and anything vested linearly since. Transfer the NFT to sell remaining upside.",
+      "After start, wait out the cliff (if any) then claim the cliff release % and anything vested linearly since. Transfer the NFT to sell remaining upside.",
     creator: "Tokens stream out as recipients claim.",
   },
   {
     key: "grace",
     title: "Grace period",
     badge: "Last chance",
-    badgeClass: "bg-amber-500/20 text-amber-300 ring-amber-500/30",
-    recipient:
-      "Vesting is done — claim any remainder before the window closes.",
+    gradient: "from-amber-500 to-chart-5",
+    recipient: "Vesting is done: claim any remainder before the window closes.",
     creator: "Wait; clawback is not available yet.",
   },
   {
     key: "clawback",
     title: "After grace",
     badge: "Clawback open",
-    badgeClass: "bg-red-500/20 text-red-300 ring-red-500/30",
-    recipient: "Unclaimed allocations are gone — creator can recover them.",
+    gradient: "from-red-500 to-chart-4",
+    recipient: "Unclaimed allocations are gone: creator can recover them.",
     creator: "Claw back unclaimed tokens from no-shows.",
   },
 ] as const;
 
 const BOUNDARIES = [
-  { pct: 0, label: "Start", sublabel: "Campaign opens", align: "start" as const },
+  {
+    pct: 0,
+    label: "Start",
+    sublabel: "Campaign opens",
+    align: "start" as const,
+  },
   {
     pct: VESTING_PCT,
     label: "End",
@@ -69,7 +75,9 @@ function formatExampleCliffRelease(bps: number): string {
 }
 
 export function ClaimingWindowTimeline() {
-  const cliffReleaseLabel = formatExampleCliffRelease(EXAMPLE_CLIFF_RELEASE_BPS);
+  const cliffReleaseLabel = formatExampleCliffRelease(
+    EXAMPLE_CLIFF_RELEASE_BPS
+  );
 
   const trackGradient = `linear-gradient(to right,
     rgb(16 185 129 / 0.55) 0%,
@@ -80,25 +88,16 @@ export function ClaimingWindowTimeline() {
     rgb(239 68 68 / 0.25) 100%)`;
 
   return (
-    <div className="rounded-xl border border-border-low bg-card/40 p-5 sm:p-6 space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium">Claiming window</p>
-          <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted">
-            Each campaign sets a cliff duration and cliff release % (basis
-            points). Nothing is claimable before the cliff ends; at cliff, that
-            % unlocks immediately and the remainder vests linearly to{" "}
-            <span className="text-foreground/80">end</span>. After vesting, a
-            grace buffer, then creator clawback of unclaimed tokens.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 rounded-full border border-border-low bg-background/60 px-3 py-1.5 text-[11px] text-muted">
-          <span
-            className="h-2 w-2 rounded-full bg-highlight shadow-[0_0_8px_var(--color-highlight)]"
-            aria-hidden
-          />
-          Example: you are here (mid-vest)
-        </div>
+    <AppCard variant="muted" padding="lg" className="gap-6 sm:p-6">
+      <div>
+        <p className="text-sm font-medium">Claiming window</p>
+        <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
+          Each campaign sets a cliff duration and cliff release % (basis
+          points). Nothing is claimable before the cliff ends; at cliff, that
+          % unlocks immediately and the remainder vests linearly to{" "}
+          <span className="text-foreground/80">end</span>. After vesting, a
+          grace buffer, then creator clawback of unclaimed tokens.
+        </p>
       </div>
 
       <div>
@@ -121,11 +120,6 @@ export function ClaimingWindowTimeline() {
             style={{ left: `${CLIFF_PCT}%`, transform: "translateX(-50%)" }}
             title="Cliff end — configurable per campaign"
           />
-
-          <div
-            className="absolute top-1/2 z-10 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-highlight bg-background shadow-[0_0_12px_var(--color-highlight)]"
-            style={{ left: `${NOW_PCT}%` }}
-          />
         </div>
 
         {/* Cliff annotation — separate row so it does not overlap Start */}
@@ -137,10 +131,10 @@ export function ClaimingWindowTimeline() {
             <span className="whitespace-nowrap text-[10px] font-medium text-accent">
               Cliff ends
             </span>
-            <span className="mt-0.5 whitespace-nowrap text-[10px] text-muted">
+            <span className="mt-0.5 whitespace-nowrap text-[10px] text-muted-foreground">
               {cliffReleaseLabel} unlocks
             </span>
-            <span className="whitespace-nowrap text-[10px] text-muted/80">
+            <span className="whitespace-nowrap text-[10px] text-muted-foreground/80">
               then linear vest
             </span>
           </div>
@@ -157,7 +151,7 @@ export function ClaimingWindowTimeline() {
                 textAlign: align === "center" ? "center" : align,
               }}
             >
-              <span className="whitespace-nowrap font-mono text-[10px] uppercase tracking-wider text-muted">
+              <span className="whitespace-nowrap font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {label}
               </span>
               {sublabel && (
@@ -172,42 +166,45 @@ export function ClaimingWindowTimeline() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         {PHASES.map((phase) => (
-          <article
-            key={phase.key}
-            className="rounded-lg border border-border-low bg-background/50 p-4"
-          >
+          <AppCard key={phase.key} variant="tile" padding="md">
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold">{phase.title}</h4>
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${phase.badgeClass}`}
-              >
+              <GradientOutlineBadge gradient={phase.gradient}>
                 {phase.badge}
-              </span>
+              </GradientOutlineBadge>
             </div>
             <dl className="mt-3 space-y-2 text-xs leading-relaxed">
               <div>
-                <dt className="font-medium text-foreground/70">Recipients</dt>
-                <dd className="mt-0.5 text-muted">{phase.recipient}</dd>
+                <dt className="font-medium text-foreground/70 underline">
+                  Recipients
+                </dt>
+                <dd className="mt-0.5 text-muted-foreground">
+                  {phase.recipient}
+                </dd>
               </div>
               <div>
-                <dt className="font-medium text-foreground/70">Creator</dt>
-                <dd className="mt-0.5 text-muted">{phase.creator}</dd>
+                <dt className="font-medium text-foreground/70 underline">
+                  Creator
+                </dt>
+                <dd className="mt-0.5 text-muted-foreground">
+                  {phase.creator}
+                </dd>
               </div>
             </dl>
-          </article>
+          </AppCard>
         ))}
       </div>
 
-      <p className="text-[11px] leading-relaxed text-muted">
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
         Cliff is optional per campaign (0 days = no wait). Release % is 0–100%
         in basis points — e.g. {cliffReleaseLabel} at cliff with{" "}
-        {100 - EXAMPLE_CLIFF_RELEASE_BPS / 100}% vesting linearly until end.
-        Try different values in the{" "}
+        {100 - EXAMPLE_CLIFF_RELEASE_BPS / 100}% vesting linearly until end. Try
+        different values in the{" "}
         <a href="#calculator" className="text-accent hover:underline">
           vesting simulator
         </a>
         .
       </p>
-    </div>
+    </AppCard>
   );
 }

@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
 const STEPS = [
   { id: 1, label: "Token" },
   { id: 2, label: "Allowlist" },
@@ -23,37 +26,42 @@ export function LaunchStepIndicator({
           <div key={id} className="flex items-center gap-2">
             {index > 0 && (
               <span
-                className={`hidden h-px w-6 sm:block ${done || active ? "bg-accent/40" : "bg-border-low"}`}
+                className={cn(
+                  "hidden h-px w-6 sm:block",
+                  done || active ? "bg-accent/40" : "bg-border-low",
+                )}
                 aria-hidden
               />
             )}
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="outline"
               disabled={!reachable || active}
               onClick={() => onGoTo(id)}
-              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition cursor-pointer disabled:cursor-default ${
-                active
-                  ? "border-accent/50 bg-accent/15 text-accent"
-                  : done
-                    ? "border-accent/25 text-accent hover:bg-accent/10"
-                    : reachable
-                      ? "border-border-low text-muted hover:border-accent/25 hover:text-foreground"
-                      : "border-border-low text-muted/50"
-              }`}
+              className={cn(
+                "gap-2 rounded-full",
+                active &&
+                  "border-accent/50 bg-accent/15 text-accent hover:bg-accent/15",
+                done &&
+                  "border-accent/25 text-accent hover:bg-accent/10",
+                !reachable && "text-muted-foreground/50",
+              )}
             >
               <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                className={cn(
+                  "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold",
                   active
                     ? "bg-accent text-accent-fg"
                     : done
                       ? "bg-accent/30 text-accent"
-                      : "bg-border-low text-muted"
-                }`}
+                      : "bg-border-low text-muted-foreground",
+                )}
               >
                 {id}
               </span>
               {label}
-            </button>
+            </Button>
           </div>
         );
       })}

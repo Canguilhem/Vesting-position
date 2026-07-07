@@ -3,6 +3,9 @@ import { useWalletConnection } from "@solana/react-hooks";
 import type { CampaignRecord } from "../../hooks/useCampaigns";
 import { useCampaignAdmin } from "../../hooks/useCampaignAdmin";
 import { TruncatedTxLink } from "../Common/Common";
+import { AppCard, AppCallout } from "../Common/AppCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type Props = {
   record: CampaignRecord;
@@ -67,9 +70,6 @@ const ADMIN_ACTIONS: {
   },
 ];
 
-const inputClass =
-  "w-full rounded-md border border-border-low bg-background px-3 py-2 font-mono text-xs";
-
 export function CampaignAdminPanel({ record }: Props) {
   const { wallet, status } = useWalletConnection();
   const { run, isSending, signature, error } =
@@ -88,26 +88,20 @@ export function CampaignAdminPanel({ record }: Props) {
 
   const selected = ADMIN_ACTIONS.find((a) => a.id === selectedId);
   const disabled = isSending;
-  const btnClass =
-    "rounded-md border border-border-low px-3 py-1.5 text-xs font-medium transition hover:border-accent/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer";
 
   const runAction = (action: Parameters<typeof run>[0]): void => {
     void run(action);
   };
 
   return (
-    <div className="space-y-3 border-t border-border-low pt-3">
-      {error && (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      )}
+    <div className="space-y-3">
+      {error && <AppCallout tone="error">{error}</AppCallout>}
 
       {signature && (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm space-y-1">
-          <p className="font-medium text-emerald-200">Transaction confirmed</p>
+        <AppCallout tone="success" className="space-y-1">
+          <p className="font-medium">Transaction confirmed</p>
           <TruncatedTxLink signature={signature} head={10} tail={10} />
-        </div>
+        </AppCallout>
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
@@ -116,41 +110,44 @@ export function CampaignAdminPanel({ record }: Props) {
           aria-label="Admin instructions"
         >
           {ADMIN_ACTIONS.map((action) => (
-            <button
+            <Button
               key={action.id}
               type="button"
+              size="sm"
+              variant={selectedId === action.id ? "secondary" : "ghost"}
+              className={`justify-start text-left ${
+                action.destructive && selectedId !== action.id
+                  ? "text-red-300/80"
+                  : ""
+              }`}
               onClick={() => setSelectedId(action.id)}
-              className={`rounded-md px-2.5 py-1.5 text-left text-xs font-medium transition cursor-pointer ${
-                selectedId === action.id
-                  ? "bg-accent/20 text-accent"
-                  : "text-muted hover:bg-card/60 hover:text-foreground"
-              } ${action.destructive && selectedId !== action.id ? "text-red-300/80" : ""}`}
             >
               {action.label}
-            </button>
+            </Button>
           ))}
         </nav>
 
-        <div className="min-w-0 flex-1 rounded-lg border border-border-low bg-card/30 px-3 py-3">
+        <AppCard variant="inset" padding="sm" className="min-w-0 flex-1">
           {!selected ? (
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Choose an instruction to see details and submit.
             </p>
           ) : (
             <div className="space-y-3">
               <div>
                 <p className="text-sm font-medium">{selected.label}</p>
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {selected.description}
                 </p>
               </div>
 
               {selected.id === "freezeCollection" && (
                 <div className="flex flex-wrap gap-2">
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
+                    variant="outline"
                     disabled={disabled}
-                    className={btnClass}
                     onClick={() =>
                       void runAction({
                         type: "freezeCollection",
@@ -159,11 +156,12 @@ export function CampaignAdminPanel({ record }: Props) {
                     }
                   >
                     Freeze
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    size="sm"
+                    variant="outline"
                     disabled={disabled}
-                    className={btnClass}
                     onClick={() =>
                       void runAction({
                         type: "freezeCollection",
@@ -172,24 +170,25 @@ export function CampaignAdminPanel({ record }: Props) {
                     }
                   >
                     Unfreeze
-                  </button>
+                  </Button>
                 </div>
               )}
 
               {selected.id === "freezeAsset" && (
                 <>
-                  <input
+                  <Input
                     type="text"
                     value={assetAddress}
                     onChange={(e) => setAssetAddress(e.target.value)}
                     placeholder="Position asset address"
-                    className={inputClass}
+                    className="font-mono text-xs"
                   />
                   <div className="flex flex-wrap gap-2">
-                    <button
+                    <Button
                       type="button"
+                      size="sm"
+                      variant="outline"
                       disabled={disabled || !assetAddress.trim()}
-                      className={btnClass}
                       onClick={() =>
                         void runAction({
                           type: "freezeAsset",
@@ -199,11 +198,12 @@ export function CampaignAdminPanel({ record }: Props) {
                       }
                     >
                       Freeze asset
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      size="sm"
+                      variant="outline"
                       disabled={disabled || !assetAddress.trim()}
-                      className={btnClass}
                       onClick={() =>
                         void runAction({
                           type: "freezeAsset",
@@ -213,24 +213,25 @@ export function CampaignAdminPanel({ record }: Props) {
                       }
                     >
                       Unfreeze asset
-                    </button>
+                    </Button>
                   </div>
                 </>
               )}
 
               {selected.id === "excludeAsset" && (
                 <>
-                  <input
+                  <Input
                     type="text"
                     value={assetAddress}
                     onChange={(e) => setAssetAddress(e.target.value)}
                     placeholder="Position asset address"
-                    className={inputClass}
+                    className="font-mono text-xs"
                   />
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
+                    variant="outline"
                     disabled={disabled || !assetAddress.trim()}
-                    className={btnClass}
                     onClick={() =>
                       void runAction({
                         type: "excludeAsset",
@@ -239,45 +240,47 @@ export function CampaignAdminPanel({ record }: Props) {
                     }
                   >
                     Exclude asset
-                  </button>
+                  </Button>
                 </>
               )}
 
               {selected.id === "clawback" && (
                 <>
-                  <input
+                  <Input
                     type="text"
                     value={assetAddress}
                     onChange={(e) => setAssetAddress(e.target.value)}
                     placeholder="Position asset address"
-                    className={inputClass}
+                    className="font-mono text-xs"
                   />
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
+                    variant="outline"
                     disabled={disabled || !assetAddress.trim()}
-                    className={btnClass}
                     onClick={() =>
                       void runAction({ type: "clawback", asset: assetAddress })
                     }
                   >
                     Clawback position
-                  </button>
+                  </Button>
                 </>
               )}
 
               {selected.id === "clawbackUnclaimed" && (
                 <>
-                  <input
+                  <Input
                     type="text"
                     value={originalRecipient}
                     onChange={(e) => setOriginalRecipient(e.target.value)}
                     placeholder="Original recipient wallet"
-                    className={inputClass}
+                    className="font-mono text-xs"
                   />
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
+                    variant="outline"
                     disabled={disabled || !originalRecipient.trim()}
-                    className={btnClass}
                     onClick={() =>
                       void runAction({
                         type: "clawbackUnclaimed",
@@ -286,34 +289,36 @@ export function CampaignAdminPanel({ record }: Props) {
                     }
                   >
                     Clawback unclaimed
-                  </button>
+                  </Button>
                 </>
               )}
 
               {selected.id === "cancelCampaign" && (
-                <button
+                <Button
                   type="button"
+                  size="sm"
+                  variant="destructive"
                   disabled={disabled}
-                  className={`${btnClass} border-red-500/40 text-red-200 hover:border-red-400/60`}
                   onClick={() => void runAction({ type: "cancelCampaign" })}
                 >
                   Cancel campaign
-                </button>
+                </Button>
               )}
 
               {selected.id === "closeCampaign" && (
-                <button
+                <Button
                   type="button"
+                  size="sm"
+                  variant="outline"
                   disabled={disabled}
-                  className={btnClass}
                   onClick={() => void runAction({ type: "closeCampaign" })}
                 >
                   Close campaign
-                </button>
+                </Button>
               )}
             </div>
           )}
-        </div>
+        </AppCard>
       </div>
     </div>
   );

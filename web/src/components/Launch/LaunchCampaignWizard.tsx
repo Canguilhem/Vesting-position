@@ -10,6 +10,9 @@ import { totalAllowlistAllocationRaw } from "../../lib/allow-list";
 import { useInitialize } from "../../hooks/useInitialize";
 import { rawToTokens } from "../../lib/vesting";
 import { CampaignSuccessModal } from "../CampaignSuccessModal";
+import { Button } from "@/components/ui/button";
+import { AppCallout, AppCard } from "../Common/AppCard";
+import { PageHeader } from "../Common/PageHeader";
 import { LaunchStepIndicator } from "./LaunchStepIndicator";
 import { LaunchStepAllowlist } from "./LaunchStepAllowlist";
 import { LaunchStepSettings } from "./LaunchStepSettings";
@@ -126,15 +129,13 @@ export function LaunchCampaignWizard({
 
   return (
     <>
-      <div className="space-y-6">
+      <AppCard variant="panel" padding="lg" className="gap-6">
         <div className="space-y-4">
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold">Launch a campaign</h3>
-            <p className="max-w-2xl text-sm text-muted">
-              Step-by-step: choose or create a distribution token, upload your
-              allowlist, then configure vesting and initialize on devnet.
-            </p>
-          </div>
+          <PageHeader
+            title="Launch a campaign"
+            description="Step-by-step: choose or create a distribution token, upload your allowlist, then configure vesting and initialize on devnet."
+            className="block"
+          />
 
           <LaunchStepIndicator
             current={step}
@@ -175,42 +176,28 @@ export function LaunchCampaignWizard({
         )}
 
         {stepError && (
-          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            {stepError}
-          </p>
+          <AppCallout tone="error">{stepError}</AppCallout>
         )}
 
         {step < 3 && (
           <div className="flex flex-wrap gap-3">
             {step > 1 && (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="rounded-lg border border-border-low px-4 py-2 text-sm font-medium transition hover:border-accent/30 cursor-pointer"
-              >
+              <Button type="button" variant="outline" onClick={handleBack}>
                 Back
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
-              onClick={() => void handleNext()}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:brightness-110 cursor-pointer"
-            >
+            <Button type="button" onClick={() => void handleNext()}>
               {nextLabel}
-            </button>
+            </Button>
           </div>
         )}
 
         {step === 3 && (
-          <button
-            type="button"
-            onClick={handleBack}
-            className="rounded-lg border border-border-low px-4 py-2 text-sm font-medium transition hover:border-accent/30 cursor-pointer"
-          >
+          <Button type="button" variant="outline" onClick={handleBack}>
             Back to allowlist
-          </button>
+          </Button>
         )}
-      </div>
+      </AppCard>
 
       <CampaignSuccessModal
         result={showModal ? lastResult : null}

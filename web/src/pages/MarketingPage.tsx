@@ -6,14 +6,19 @@ import { ClaimingWindowTimeline } from "../components/ClaimingWindowTimeline";
 import {
   ExternalLinkIcon,
   TruncatedExplorerLink,
+  AppCard,
+  PageHeader,
+  GradientOutlineBadge,
 } from "../components/Common/Common";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const HIGHLIGHTS = [
-  "Merkle allowlists",
-  "Tradeable mpl-core NFTs",
-  "Partial claims",
-  "Flexible cliffs",
-  "Loyalty badges",
+  { label: "Merkle allowlists", gradient: "from-primary to-chart-2" },
+  { label: "Tradeable mpl-core NFTs", gradient: "from-chart-2 to-chart-4" },
+  { label: "Partial claims", gradient: "from-chart-4 to-primary" },
+  { label: "Flexible cliffs", gradient: "from-primary via-chart-3 to-chart-2" },
+  { label: "Loyalty badges", gradient: "from-chart-5 via-primary to-chart-2" },
 ] as const;
 
 const STEPS = [
@@ -50,88 +55,75 @@ export function MarketingPage() {
   return (
     <main className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-10">
       <section className="mb-20 space-y-8">
-        <div className="max-w-3xl space-y-5">
-          <h1 className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
-            Turn token vesting into{" "}
-            <span className="text-accent">tradeable on-chain assets</span>
-          </h1>
-          <p className="text-lg leading-relaxed text-muted sm:text-xl">
-            Each allocation becomes an mpl-core NFT: transferable, composable,
-            and readable without off-chain indexing. Projects get programmable
-            loyalty; recipients get optionality.
-          </p>
-        </div>
+        <PageHeader
+          titleAs="h1"
+          title={
+            <>
+              Turn token vesting into{" "}
+              <span className="text-accent">tradeable on-chain assets</span>
+            </>
+          }
+          description="Each allocation becomes an mpl-core NFT: transferable, composable, and readable without off-chain indexing. Projects get programmable loyalty; recipients get optionality."
+        />
 
         <ul className="flex flex-wrap gap-2">
           {HIGHLIGHTS.map((item) => (
-            <li
-              key={item}
-              className="rounded-full border border-border-low bg-card/60 px-3 py-1 text-xs text-muted"
-            >
-              {item}
+            <li key={item.label}>
+              <GradientOutlineBadge gradient={item.gradient}>
+                {item.label}
+              </GradientOutlineBadge>
             </li>
           ))}
         </ul>
 
-        <div className="flex flex-wrap gap-3 justify-between">
-          <div className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Badge
+            variant="secondary"
+            className="gap-2 border-accent/25 bg-accent/10 px-3 py-1 text-accent"
+          >
             <span className="h-1.5 w-1.5 rounded-full bg-highlight animate-pulse" />
             Live on Solana Devnet · Turbine Builder Cohort Q2 2026
-          </div>
+          </Badge>
           <div className="flex flex-wrap gap-3">
-            <a
-              href="#calculator"
-              className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-accent-fg shadow-[0_0_32px_-8px_var(--color-accent-glow)] transition hover:brightness-110"
-            >
-              Try the simulator
-            </a>
-            <Link
-              to="/app"
-              className="rounded-xl border border-border-low bg-card px-5 py-3 text-sm font-semibold transition hover:border-accent/30"
-            >
-              Open devnet app
-            </Link>
-            <a
-              href={EXPLORER_PROGRAM_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-border-low bg-card px-5 py-3 text-sm font-semibold transition hover:border-accent/30"
-            >
-              <ExternalLinkIcon size={16} />
-              View on Explorer
-            </a>
+            <Button asChild size="lg">
+              <a href="#calculator">Try the simulator</a>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link to="/app">Open devnet app</Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <a
+                href={EXPLORER_PROGRAM_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2"
+              >
+                <ExternalLinkIcon size={16} />
+                View on Explorer
+              </a>
+            </Button>
           </div>
         </div>
       </section>
 
       <section id="how-it-works" className="scroll-mt-24 mb-20 space-y-8">
-        <div className="max-w-2xl space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-            How it works
-          </p>
-          <h2 className="text-3xl font-semibold tracking-tight">
-            From campaign launch to loyalty badge
-          </h2>
-          <p className="text-muted">
-            A single lifecycle replaces static vesting spreadsheets with
-            composable on-chain positions and a clear claiming window.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="How it works"
+          title="From campaign launch to loyalty badge"
+          description="A single lifecycle replaces static vesting spreadsheets with composable on-chain positions and a clear claiming window."
+        />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((item) => (
-            <article
-              key={item.step}
-              className="relative rounded-xl border border-border-low bg-card/50 p-5"
-            >
+            <AppCard key={item.step} variant="surface" padding="lg">
               <span className="font-mono text-2xl font-bold text-accent/40">
                 {item.step}
               </span>
               <h3 className="mt-3 font-semibold">{item.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {item.body}
               </p>
-            </article>
+            </AppCard>
           ))}
         </div>
 
@@ -142,28 +134,26 @@ export function MarketingPage() {
         <VestingCalculator />
       </div>
 
-      <section
+      <AppCard
         id="program"
-        className="scroll-mt-24 rounded-2xl border border-border-low bg-card p-6"
+        variant="elevated"
+        padding="xl"
+        className="scroll-mt-24 gap-4"
       >
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-            On-chain
-          </p>
-          <h2 className="text-2xl font-semibold tracking-tight">Program ID</h2>
-          <p className="max-w-2xl text-sm text-muted">
-            Deployed on devnet. Copy the program address or inspect it on Solana
-            Explorer.
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="On-chain"
+          title="Program ID"
+          description="Deployed on devnet. Copy the program address or inspect it on Solana Explorer."
+          className="block"
+        />
 
-        <div className="mt-4 rounded-lg border border-border-low bg-background/60 px-4 py-3">
-          <p className="text-xs text-muted">Program ID (devnet)</p>
+        <AppCard variant="inset" padding="sm">
+          <p className="text-xs text-muted-foreground">Program ID (devnet)</p>
           <div className="mt-1">
             <TruncatedExplorerLink address={PROGRAM_ID} head={12} tail={12} />
           </div>
-        </div>
-      </section>
+        </AppCard>
+      </AppCard>
     </main>
   );
 }

@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { SiteLayout } from "./layouts/SiteLayout";
 import { MarketingPage } from "./pages/MarketingPage";
+import { AppCard } from "./components/Common/AppCard";
 
 const AppPage = lazy(() =>
   import("./pages/AppPage").then((m) => ({ default: m.AppPage })),
@@ -13,7 +14,9 @@ const ProfilePage = lazy(() =>
 function RouteFallback() {
   return (
     <main className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-10">
-      <p className="text-sm text-muted">Loading…</p>
+      <AppCard variant="dashed" padding="lg" className="text-sm text-muted-foreground">
+        Loading…
+      </AppCard>
     </main>
   );
 }

@@ -5,7 +5,16 @@ import {
   CAMPAIGN_STATUS_LABELS,
   formatCampaignTimestamp,
 } from "../../lib/campaign-status";
-import { TruncatedExplorerLink } from "../Common/Common";
+import {
+  EntityCard,
+  EntityCardContent,
+  EntityCardFooter,
+  EntityCardHeader,
+  EntityCardMeta,
+  TruncatedExplorerLink,
+} from "../Common/Common";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CampaignRecord, useCampaignStatus } from "../../hooks/useCampaigns";
 import { appCampaignUrl } from "../../lib/app-routes";
 import { useState } from "react";
@@ -16,64 +25,74 @@ export function CampaignAdminCard({ record }: { record: CampaignRecord }) {
   const [manageOpen, setManageOpen] = useState(false);
 
   return (
-    <article className="rounded-xl border border-border-low bg-background/50 p-4 space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-mono text-xs text-muted">
-            <TruncatedExplorerLink address={String(record.address)} />
-          </p>
-          <p className="mt-1 text-sm font-medium">
-            {formatTokens(record.account.totalDeposit)} deposited
-          </p>
-        </div>
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-medium ${CAMPAIGN_STATUS_COLORS[status]}`}
-        >
-          {CAMPAIGN_STATUS_LABELS[status]}
-        </span>
-      </div>
-      <dl className="grid grid-cols-2 gap-2 text-xs text-muted">
-        <div>
-          <dt>Mint</dt>
-          <dd className="text-foreground">
-            <TruncatedExplorerLink
-              address={String(record.account.mintToDistribute)}
-            />
-          </dd>
-        </div>
-        <div>
-          <dt>Cliff release</dt>
-          <dd className="font-mono text-foreground">
-            {formatPercent(record.account.cliffReleaseBps)}
-          </dd>
-        </div>
-        <div className="col-span-2">
-          <dt>Claim window</dt>
-          <dd className="font-mono text-[10px] text-foreground/90">
-            {formatCampaignTimestamp(record.account.start)} →{" "}
-            {formatCampaignTimestamp(
-              record.account.end + record.account.gracePeriod
-            )}
-          </dd>
-        </div>
-      </dl>
-      <div className="flex flex-wrap gap-2">
-        <button
+    <EntityCard size="sm">
+      <EntityCardHeader
+        title={`${formatTokens(record.account.totalDeposit)} deposited`}
+        description={
+          <TruncatedExplorerLink
+            address={String(record.address)}
+            className="font-mono"
+          />
+        }
+        action={
+          <Badge className={`${CAMPAIGN_STATUS_COLORS[status]}`}>
+            {CAMPAIGN_STATUS_LABELS[status]}
+          </Badge>
+        }
+      />
+      <EntityCardContent>
+        <EntityCardMeta
+          rows={[
+            {
+              label: "Mint",
+              value: (
+                <TruncatedExplorerLink
+                  address={String(record.account.mintToDistribute)}
+                />
+              ),
+            },
+            {
+              label: "Cliff release",
+              value: (
+                <span className="font-mono">
+                  {formatPercent(record.account.cliffReleaseBps)}
+                </span>
+              ),
+            },
+            {
+              label: "Claim window",
+              value: (
+                <span className="font-mono text-[10px]">
+                  {formatCampaignTimestamp(record.account.start)} →{" "}
+                  {formatCampaignTimestamp(
+                    record.account.end + record.account.gracePeriod
+                  )}
+                </span>
+              ),
+              fullWidth: true,
+            },
+          ]}
+        />
+      </EntityCardContent>
+      <EntityCardFooter className="flex flex-wrap gap-2">
+        <Button
           type="button"
+          size="xs"
+          variant="outline"
           onClick={() => setManageOpen((open) => !open)}
-          className="rounded-md border border-border-low px-2.5 py-1 text-xs font-medium transition hover:border-accent/30 cursor-pointer"
         >
           {manageOpen ? "Hide admin" : "Manage campaign"}
-        </button>
-        <Link
-          to={appCampaignUrl(String(record.address))}
-          className="rounded-md px-2.5 py-1 text-xs text-muted hover:text-foreground transition"
-        >
-          Open in app →
-        </Link>
-      </div>
+        </Button>
+        <Button asChild size="xs" variant="ghost">
+          <Link to={appCampaignUrl(String(record.address))}>Open in app →</Link>
+        </Button>
+      </EntityCardFooter>
 
-      {manageOpen && <CampaignAdminPanel record={record} />}
-    </article>
+      {manageOpen && (
+        <EntityCardContent className="border-t border-border-low pt-4">
+          <CampaignAdminPanel record={record} />
+        </EntityCardContent>
+      )}
+    </EntityCard>
   );
 }

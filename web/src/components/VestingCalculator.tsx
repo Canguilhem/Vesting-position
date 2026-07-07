@@ -1,6 +1,8 @@
 import { useForm } from "@tanstack/react-form";
 import { computeVesting, formatPercent, formatTokens } from "../lib/vesting";
-import { fieldClassName, labelClassName } from "./form-styles";
+import { labelClassName } from "./form-styles";
+import { Input } from "@/components/ui/input";
+import { AppCard, PageHeader } from "./Common/Common";
 
 const DAY = 86_400;
 const MONTH = 30 * DAY;
@@ -69,10 +71,10 @@ function CalculatorResults({ values }: { values: CalculatorFormValues }) {
       : 0;
 
   return (
-    <div className="flex flex-col justify-between gap-6 rounded-xl border border-border-low bg-background/60 p-5">
+    <AppCard variant="panel" padding="lg" className="justify-between gap-6">
       <div className="space-y-4">
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">
             Claimable now
           </p>
           <p className="mt-1 font-mono text-3xl font-semibold text-accent">
@@ -81,13 +83,13 @@ function CalculatorResults({ values }: { values: CalculatorFormValues }) {
         </div>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p className="text-muted">Total vested</p>
+            <p className="text-muted-foreground">Total vested</p>
             <p className="font-mono font-medium">
               {formatTokens(result.totalVested)}
             </p>
           </div>
           <div>
-            <p className="text-muted">Remaining</p>
+            <p className="text-muted-foreground">Remaining</p>
             <p className="font-mono font-medium">
               {formatTokens(values.allocation - result.totalVested)}
             </p>
@@ -96,7 +98,7 @@ function CalculatorResults({ values }: { values: CalculatorFormValues }) {
       </div>
 
       <div className="space-y-2">
-        <div className="flex justify-between text-xs text-muted">
+        <div className="flex justify-between text-xs text-muted-foreground">
           <span>Vesting progress</span>
           <span>{progress.toFixed(1)}%</span>
         </div>
@@ -106,7 +108,7 @@ function CalculatorResults({ values }: { values: CalculatorFormValues }) {
             style={{ width: `${progress}%` }}
           />
         </div>
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           {result.beforeCliff
             ? "Before cliff — nothing claimable yet (position can still be minted on first claim)."
             : result.fullyVested
@@ -114,7 +116,7 @@ function CalculatorResults({ values }: { values: CalculatorFormValues }) {
               : "Linear vesting active between cliff and end."}
         </p>
       </div>
-    </div>
+    </AppCard>
   );
 }
 
@@ -124,30 +126,23 @@ export function VestingCalculator() {
   });
 
   return (
-    <section id="calculator" className="scroll-mt-24 space-y-6 p-6">
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          Interactive demo
-        </p>
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Vesting schedule simulator
-        </h2>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          {/* Same formula as on-chain: cliff release plus linear vesting from cliff
-          to end.  */}
-          Drag the timeline to see claimable amounts change over time.
-        </p>
-      </div>
+    <section id="calculator" className="scroll-mt-24 space-y-6">
+      <PageHeader
+        eyebrow="Interactive demo"
+        title="Vesting schedule simulator"
+        description="Drag the timeline to see claimable amounts change over time. Uses the same cliff + linear vesting formula as on-chain."
+      />
 
-      <form.Subscribe selector={(state) => ({ ...state.values })}>
-        {(values) => (
-          <div className="grid gap-6 lg:grid-cols-2">
+      <AppCard variant="panel" padding="lg">
+        <form.Subscribe selector={(state) => ({ ...state.values })}>
+          {(values) => (
+            <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-4">
               <label className={labelClassName()}>
                 <span className="font-medium">Allocation (raw units)</span>
                 <form.Field name="allocation">
                   {(field) => (
-                    <input
+                    <Input
                       type="number"
                       min={0}
                       value={field.state.value}
@@ -155,7 +150,7 @@ export function VestingCalculator() {
                       onChange={(e) =>
                         field.handleChange(Number(e.target.value) || 0)
                       }
-                      className={`${fieldClassName()} font-mono`}
+                      className="font-mono"
                     />
                   )}
                 </form.Field>
@@ -165,7 +160,7 @@ export function VestingCalculator() {
                 <span className="font-medium">Already claimed</span>
                 <form.Field name="claimedSoFar">
                   {(field) => (
-                    <input
+                    <Input
                       type="number"
                       min={0}
                       max={values.allocation}
@@ -174,7 +169,7 @@ export function VestingCalculator() {
                       onChange={(e) =>
                         field.handleChange(Number(e.target.value) || 0)
                       }
-                      className={`${fieldClassName()} font-mono`}
+                      className="font-mono"
                     />
                   )}
                 </form.Field>
@@ -185,14 +180,13 @@ export function VestingCalculator() {
                   <span className="font-medium">Start</span>
                   <form.Field name="start">
                     {(field) => (
-                      <input
+                      <Input
                         type="datetime-local"
                         value={toInputDate(field.state.value)}
                         onBlur={field.handleBlur}
                         onChange={(e) =>
                           field.handleChange(fromInputDate(e.target.value))
                         }
-                        className={fieldClassName()}
                       />
                     )}
                   </form.Field>
@@ -201,14 +195,13 @@ export function VestingCalculator() {
                   <span className="font-medium">End</span>
                   <form.Field name="end">
                     {(field) => (
-                      <input
+                      <Input
                         type="datetime-local"
                         value={toInputDate(field.state.value)}
                         onBlur={field.handleBlur}
                         onChange={(e) =>
                           field.handleChange(fromInputDate(e.target.value))
                         }
-                        className={fieldClassName()}
                       />
                     )}
                   </form.Field>
@@ -262,14 +255,13 @@ export function VestingCalculator() {
                 <span className="font-medium">Simulated time</span>
                 <form.Field name="simulatedNow">
                   {(field) => (
-                    <input
+                    <Input
                       type="datetime-local"
                       value={toInputDate(field.state.value)}
                       onBlur={field.handleBlur}
                       onChange={(e) =>
                         field.handleChange(fromInputDate(e.target.value))
                       }
-                      className={fieldClassName()}
                     />
                   )}
                 </form.Field>
@@ -280,6 +272,7 @@ export function VestingCalculator() {
           </div>
         )}
       </form.Subscribe>
+      </AppCard>
     </section>
   );
 }

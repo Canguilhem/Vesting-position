@@ -7,8 +7,16 @@ import {
 } from "../../lib/allow-list";
 import { isSupabaseConfigured } from "../../lib/supabase";
 import { formatTokens } from "../../lib/vesting";
-import { CopyButton } from "../Common/Common";
 import { truncate } from "../../lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  AppCallout,
+  CopyButton,
+  EntityCard,
+  EntityCardContent,
+  EntityCardMeta,
+  SectionHeader,
+} from "../Common/Common";
 
 export function LaunchStepAllowlist({
   snapshot,
@@ -54,12 +62,22 @@ export function LaunchStepAllowlist({
   }
 
   async function loadSampleAllowlist() {
-    const res = await fetch("/sample-allowlist.csv");
-    if (!res.ok) {
-      onErrorChange("Failed to load sample allowlist.");
-      return;
+    onParsingChange(true);
+    onErrorChange(null);
+    try {
+      const res = await fetch("/sample-allowlist.csv");
+      if (!res.ok) {
+        onSnapshotChange(null);
+        onErrorChange("Failed to load sample allowlist.");
+        return;
+      }
+      await loadAllowlistCsv(await res.text());
+    } catch (err) {
+      onSnapshotChange(null);
+      onErrorChange(err instanceof Error ? err.message : String(err));
+    } finally {
+      onParsingChange(false);
     }
-    await loadAllowlistCsv(await res.text());
   }
 
   const totalAllocation = snapshot?.entries.reduce(
@@ -69,86 +87,93 @@ export function LaunchStepAllowlist({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold">Recipient allowlist</h3>
-        <p className="max-w-2xl text-sm text-muted">
-          Upload a semicolon-separated CSV with{" "}
-          <code className="font-mono">wallet;amount</code> columns (amount in
-          base token units). MVP limit: {formatAllowlistLimits()}. The merkle
-          root is derived from this file and stored per campaign
-          {isSupabaseConfigured()
-            ? " in Supabase"
-            : " when Supabase is configured"}
-          .
-        </p>
-      </div>
+      <SectionHeader
+        title="Recipient allowlist"
+        description={
+          <>
+            Upload a semicolon-separated CSV with{" "}
+            <code className="font-mono">wallet;amount</code> columns (amount in
+            base token units). MVP limit: {formatAllowlistLimits()}. The merkle
+            root is derived from this file and stored per campaign
+            {isSupabaseConfigured()
+              ? " in Supabase"
+              : " when Supabase is configured"}
+            .
+          </>
+        }
+      />
 
-      <div className="rounded-xl border border-border-low bg-card/30 p-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleCsvFile(file);
-              e.target.value = "";
-            }}
-          />
-          <button
-            type="button"
-            disabled={parsing}
-            onClick={() => fileInputRef.current?.click()}
-            className="rounded-lg border border-border-low px-3 py-2 text-sm transition hover:border-accent/30 disabled:opacity-50 cursor-pointer"
-          >
-            {parsing ? "Parsing…" : "Upload CSV"}
-          </button>
-          <button
-            type="button"
-            disabled={parsing}
-            onClick={() => void loadSampleAllowlist()}
-            className="rounded-lg border border-border-low px-3 py-2 text-sm text-muted transition hover:border-accent/30 disabled:opacity-50 cursor-pointer"
-          >
-            Load sample allowlist
-          </button>
-        </div>
+      <EntityCard size="sm">
+        <EntityCardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleCsvFile(file);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={parsing}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {parsing ? "Parsing…" : "Upload CSV"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={parsing}
+              onClick={() => void loadSampleAllowlist()}
+            >
+              Load sample allowlist
+            </Button>
+          </div>
 
-        {error && (
-          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            {error}
-          </p>
-        )}
+          {error && <AppCallout tone="error">{error}</AppCallout>}
 
-        {snapshot && (
-          <dl className="grid gap-2 text-sm sm:grid-cols-3">
-            <div>
-              <dt className="text-xs text-muted">Recipients</dt>
-              <dd className="font-medium">{snapshot.entries.length}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted">Total allocation</dt>
-              <dd className="font-medium font-mono text-xs">
-                {totalAllocation != null
-                  ? formatTokens(totalAllocation)
-                  : "—"}
-              </dd>
-            </div>
-            <div className="sm:col-span-3">
-              <dt className="text-xs text-muted">Merkle root</dt>
-              <dd className="inline-flex items-center gap-1 font-mono text-xs">
-                <span title={snapshot.merkleRoot}>
-                  {truncate(snapshot.merkleRoot, 12, 12)}
-                </span>
-                <CopyButton
-                  value={snapshot.merkleRoot}
-                  label="Copy merkle root"
-                />
-              </dd>
-            </div>
-          </dl>
-        )}
-      </div>
+          {snapshot && (
+            <EntityCardMeta
+              rows={[
+                {
+                  label: "Recipients",
+                  value: snapshot.entries.length,
+                },
+                {
+                  label: "Total allocation",
+                  value: (
+                    <span className="font-mono">
+                      {totalAllocation != null
+                        ? formatTokens(totalAllocation)
+                        : "—"}
+                    </span>
+                  ),
+                },
+                {
+                  label: "Merkle root",
+                  value: (
+                    <span className="inline-flex items-center gap-1 font-mono">
+                      <span title={snapshot.merkleRoot}>
+                        {truncate(snapshot.merkleRoot, 12, 12)}
+                      </span>
+                      <CopyButton
+                        value={snapshot.merkleRoot}
+                        label="Copy merkle root"
+                      />
+                    </span>
+                  ),
+                  fullWidth: true,
+                },
+              ]}
+            />
+          )}
+        </EntityCardContent>
+      </EntityCard>
     </div>
   );
 }

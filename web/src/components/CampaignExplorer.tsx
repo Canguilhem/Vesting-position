@@ -3,10 +3,14 @@ import { useSearchParams } from "react-router-dom";
 import type { Address } from "@solana/addresses";
 import { useCampaigns } from "../hooks/useCampaigns";
 import { tryParseAddress } from "../lib/utils";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateTokenPanel } from "./CreateTokenPanel";
 import { LaunchCampaignWizard } from "./Launch/LaunchCampaignWizard";
 import CampaignCard from "./Campaigns/CampaignCard";
 import SelectedCampaignPanel from "./Campaigns/SelectedCampaignPanel";
+import { AppCard, AppCallout } from "./Common/AppCard";
+import { EmptyState } from "./Common/Common";
 
 export function CampaignExplorer() {
   const { campaigns, loading, error, refresh } = useCampaigns();
@@ -51,64 +55,50 @@ export function CampaignExplorer() {
 
   return (
     <section className="space-y-6 py-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as "browse" | "token" | "launch")}
+      >
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg border border-border-low p-0.5">
-            {(
-              [
-                ["browse", "Browse"],
-                ["token", "Token"],
-                ["launch", "Launch"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTab(id)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition cursor-pointer ${
-                  tab === id
-                    ? "bg-accent/20 text-accent"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <TabsList>
+            <TabsTrigger value="browse">Browse</TabsTrigger>
+            <TabsTrigger value="token">Token</TabsTrigger>
+            <TabsTrigger value="launch">Launch</TabsTrigger>
+          </TabsList>
           {tab === "browse" && (
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => refresh()}
               disabled={loading}
-              className="rounded-lg border border-border-low px-4 py-2 text-sm font-medium transition hover:border-accent/30 disabled:opacity-60 cursor-pointer"
             >
               {loading ? "Loading…" : "Refresh campaigns"}
-            </button>
+            </Button>
           )}
         </div>
-      </div>
 
-      {tab === "token" ? (
-        <CreateTokenPanel onLaunchWithMint={handleLaunchWithMint} />
-      ) : tab === "launch" ? (
-        <LaunchCampaignWizard
-          prefilledMint={launchMint}
-          onViewCampaign={handleViewCampaign}
-        />
-      ) : (
-        <>
-          {error && (
-            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-              {error}
-            </p>
-          )}
+        <TabsContent value="token" className="mt-6">
+          <AppCard variant="panel" padding="lg">
+            <CreateTokenPanel onLaunchWithMint={handleLaunchWithMint} />
+          </AppCard>
+        </TabsContent>
+
+        <TabsContent value="launch" className="mt-6">
+          <LaunchCampaignWizard
+            prefilledMint={launchMint}
+            onViewCampaign={handleViewCampaign}
+          />
+        </TabsContent>
+
+        <TabsContent value="browse" className="mt-6 space-y-6">
+          {error && <AppCallout tone="error">{error}</AppCallout>}
 
           {loading && campaigns.length === 0 ? (
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               Fetching campaigns from devnet…
             </p>
           ) : campaigns.length === 0 ? (
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               No campaigns found. Use the Launch tab to create one, or run{" "}
               <code className="font-mono text-xs">yarn test:devnet</code>.
             </p>
@@ -134,15 +124,13 @@ export function CampaignExplorer() {
                 {selectedRecord ? (
                   <SelectedCampaignPanel record={selectedRecord} />
                 ) : (
-                  <div className="flex h-full min-h-[240px] items-center justify-center rounded-xl border border-dashed border-border-low p-8 text-center text-sm text-muted">
-                    Select a campaign to view details and claim.
-                  </div>
+                  <EmptyState message="Select a campaign to view details and claim." />
                 )}
               </div>
             </div>
           )}
-        </>
-      )}
+        </TabsContent>
+      </Tabs>
     </section>
   );
 }

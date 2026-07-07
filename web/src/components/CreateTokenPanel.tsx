@@ -8,8 +8,12 @@ import {
 import { createDefaultCreateTokenFormValues } from "../lib/create-token";
 import { formatTokenCount, formatTokens } from "../lib/vesting";
 import { useCreateToken } from "../hooks/useCreateToken";
-import { fieldClassName, labelClassName } from "./form-styles";
+import { labelClassName } from "./form-styles";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AppCard, AppCallout } from "./Common/AppCard";
 import {
+  SectionHeader,
   TruncatedExplorerLink,
   TruncatedTxLink,
 } from "./Common/Common";
@@ -47,28 +51,29 @@ export function CreateTokenPanel({
         void form.handleSubmit();
       }}
     >
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold">Create distribution token</h3>
-        <p className="max-w-2xl text-sm text-muted">
-          Mint a fresh SPL token to your wallet once, then launch campaigns from
-          the Launch tab wizard. Example: mint{" "}
-          {formatTokenCount(DEFAULT_TOKEN_SUPPLY_TOKENS)} tokens, then run up to{" "}
-          {Number(DEFAULT_TOKEN_SUPPLY_TOKENS / DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)}{" "}
-          campaigns at {formatTokenCount(DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)} each.
-        </p>
-      </div>
+      <SectionHeader
+        title="Create distribution token"
+        description={
+          <>
+            Mint a fresh SPL token to your wallet once, then launch campaigns from
+            the Launch tab wizard. Example: mint{" "}
+            {formatTokenCount(DEFAULT_TOKEN_SUPPLY_TOKENS)} tokens, then run up to{" "}
+            {Number(DEFAULT_TOKEN_SUPPLY_TOKENS / DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)}{" "}
+            campaigns at {formatTokenCount(DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)} each.
+          </>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={labelClassName()}>
           <span className="font-medium">Token label (local)</span>
           <form.Field name="label">
             {(field) => (
-              <input
+              <Input
                 type="text"
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
-                className={fieldClassName()}
                 placeholder="My project token"
               />
             )}
@@ -79,7 +84,7 @@ export function CreateTokenPanel({
           <span className="font-medium">Decimals</span>
           <form.Field name="decimals">
             {(field) => (
-              <input
+              <Input
                 type="number"
                 min={0}
                 max={9}
@@ -88,7 +93,6 @@ export function CreateTokenPanel({
                 onChange={(e) =>
                   field.handleChange(Number(e.target.value) || 0)
                 }
-                className={fieldClassName()}
               />
             )}
           </form.Field>
@@ -98,13 +102,12 @@ export function CreateTokenPanel({
           <span className="font-medium">Total supply (tokens)</span>
           <form.Field name="supply">
             {(field) => (
-              <input
+              <Input
                 type="text"
                 inputMode="numeric"
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
-                className={fieldClassName()}
               />
             )}
           </form.Field>
@@ -117,7 +120,7 @@ export function CreateTokenPanel({
                     )
                   : 0;
               return (
-                <span className="text-xs text-muted">
+                <span className="text-xs text-muted-foreground">
                   Minted entirely to your wallet ATA. At{" "}
                   {formatTokenCount(DEFAULT_CAMPAIGN_DEPOSIT_TOKENS)} tokens per
                   campaign, that supports ~{campaignCount} campaign
@@ -130,55 +133,41 @@ export function CreateTokenPanel({
       </div>
 
       {status !== "connected" && (
-        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-          Connect a wallet to create a token.
-        </p>
+        <AppCallout tone="warning">Connect a wallet to create a token.</AppCallout>
       )}
 
-      {error && (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      )}
+      {error && <AppCallout tone="error">{error}</AppCallout>}
 
       {lastResult && (
-        <div className="space-y-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-          <p className="text-sm font-medium text-emerald-200">Token created</p>
+        <AppCard variant="success" padding="md" className="gap-3">
+          <p className="text-sm font-medium">Token created</p>
           <p className="text-xs">
             <TruncatedExplorerLink address={String(lastResult.mint)} />
           </p>
-          <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
+          <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>Supply: {formatTokens(lastResult.supply)} tokens</span>
             <TruncatedTxLink signature={lastResult.signature} head={10} tail={10} />
           </p>
           <div className="flex flex-wrap gap-2">
             {onLaunchWithMint && (
-              <button
+              <Button
                 type="button"
+                size="sm"
                 onClick={() => onLaunchWithMint(lastResult.mint)}
-                className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg cursor-pointer"
               >
                 Launch campaign with this mint
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
-              onClick={() => clearResult()}
-              className="rounded-lg border border-border-low px-3 py-1.5 text-sm cursor-pointer"
-            >
+            <Button type="button" size="sm" variant="outline" onClick={() => clearResult()}>
               Dismiss
-            </button>
+            </Button>
           </div>
-        </div>
+        </AppCard>
       )}
 
-      <button
-        type="submit"
-        disabled={!canCreate || isSending}
-        className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-      >
+      <Button type="submit" disabled={!canCreate || isSending}>
         {isSending ? "Confirm in wallet…" : "Create token & mint supply"}
-      </button>
+      </Button>
     </form>
   );
 }

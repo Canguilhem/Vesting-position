@@ -48,4 +48,4 @@ export function ExternalLinkIcon({ size = 14, className, ...props }: IconProps) 
 }
 
 export const iconActionClass =
-  "inline-flex shrink-0 items-center justify-center rounded-md border border-border-low p-1 text-muted transition hover:border-accent/40 hover:text-accent";
+  "inline-flex shrink-0 items-center justify-center rounded-md border border-border-low p-1 text-muted-foreground transition hover:border-accent/40 hover:text-accent";

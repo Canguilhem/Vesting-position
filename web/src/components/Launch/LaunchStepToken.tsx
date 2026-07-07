@@ -18,8 +18,11 @@ import { tryParseAddress } from "../../lib/utils";
 import { formatTokenCount, formatTokens } from "../../lib/vesting";
 import { useCreateToken } from "../../hooks/useCreateToken";
 import { useWalletTokenBalance } from "../../hooks/useWalletTokenBalance";
-import { fieldClassName, labelClassName } from "../form-styles";
-import { TruncatedExplorerLink } from "../Common/Common";
+import { labelClassName } from "../form-styles";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AppCard, AppCallout } from "../Common/AppCard";
+import { SectionHeader, TruncatedExplorerLink } from "../Common/Common";
 
 export type TokenStepMode = "existing" | "create";
 
@@ -93,13 +96,10 @@ export const LaunchStepToken = forwardRef<
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold">Distribution token</h3>
-        <p className="max-w-2xl text-sm text-muted">
-          Pick an SPL token mint that holds your campaign deposit, or mint a new
-          one now. One token can fund multiple campaigns over time.
-        </p>
-      </div>
+      <SectionHeader
+        title="Distribution token"
+        description="Pick an SPL token mint that holds your campaign deposit, or mint a new one now. One token can fund multiple campaigns over time."
+      />
 
       <div className="flex flex-wrap gap-2">
         {(
@@ -108,40 +108,34 @@ export const LaunchStepToken = forwardRef<
             ["create", "Create new token"],
           ] as const
         ).map(([id, label]) => (
-          <button
+          <Button
             key={id}
             type="button"
+            variant={mode === id ? "secondary" : "outline"}
             onClick={() => onModeChange(id)}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition cursor-pointer ${
-              mode === id
-                ? "border-accent/50 bg-accent/10 text-accent"
-                : "border-border-low text-muted hover:border-accent/30"
-            }`}
           >
             {label}
-          </button>
+          </Button>
         ))}
       </div>
 
       {mode === "existing" ? (
-        <div className="space-y-4 rounded-xl border border-border-low bg-card/30 p-4">
+        <AppCard variant="section" padding="md" className="gap-4">
           {savedTokens.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted">Saved tokens</p>
+              <p className="text-xs font-medium text-muted-foreground">Saved tokens</p>
               <div className="flex flex-wrap gap-2">
                 {savedTokens.map((token) => (
-                  <button
+                  <Button
                     key={token.mint}
                     type="button"
+                    size="sm"
+                    variant={mint === token.mint ? "secondary" : "outline"}
+                    className="font-mono"
                     onClick={() => onMintChange(token.mint)}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-mono transition cursor-pointer ${
-                      mint === token.mint
-                        ? "border-accent/50 bg-accent/10 text-accent"
-                        : "border-border-low text-muted hover:border-accent/30"
-                    }`}
                   >
                     {token.label ?? `${token.mint.slice(0, 8)}…`}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -149,15 +143,15 @@ export const LaunchStepToken = forwardRef<
 
           <label className={labelClassName()}>
             <span className="font-medium">Token mint address</span>
-            <input
+            <Input
               type="text"
               value={mint}
               onChange={(e) => onMintChange(e.target.value)}
               placeholder="SPL token mint address"
-              className={`${fieldClassName()} font-mono text-xs`}
+              className="font-mono text-xs"
               spellCheck={false}
             />
-            <span className="text-xs text-muted">
+            <span className="text-xs text-muted-foreground">
               {balanceLoading
                 ? "Checking wallet balance…"
                 : balance != null
@@ -169,10 +163,10 @@ export const LaunchStepToken = forwardRef<
                     : "Paste a mint or pick a saved token"}
             </span>
           </label>
-        </div>
+        </AppCard>
       ) : (
-        <div className="space-y-4 rounded-xl border border-border-low bg-card/30 p-4">
-          <p className="text-xs text-muted">
+        <AppCard variant="section" padding="md" className="gap-4">
+          <p className="text-xs text-muted-foreground">
             Mints {formatTokenCount(DEFAULT_TOKEN_SUPPLY_TOKENS)} tokens to your
             wallet (devnet). Supports ~
             {Number(
@@ -183,22 +177,21 @@ export const LaunchStepToken = forwardRef<
           </p>
 
           {tokenAlreadyCreated ? (
-            <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+            <AppCallout tone="success">
               Token created — mint{" "}
               <TruncatedExplorerLink address={mint} head={10} tail={10} />
-            </p>
+            </AppCallout>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               <label className={labelClassName()}>
                 <span className="font-medium">Token label (local)</span>
                 <createForm.Field name="label">
                   {(field) => (
-                    <input
+                    <Input
                       type="text"
                       value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}
-                      className={fieldClassName()}
                       placeholder="My project token"
                     />
                   )}
@@ -209,7 +202,7 @@ export const LaunchStepToken = forwardRef<
                 <span className="font-medium">Decimals</span>
                 <createForm.Field name="decimals">
                   {(field) => (
-                    <input
+                    <Input
                       type="number"
                       min={0}
                       max={9}
@@ -218,7 +211,6 @@ export const LaunchStepToken = forwardRef<
                       onChange={(e) =>
                         field.handleChange(Number(e.target.value) || 0)
                       }
-                      className={fieldClassName()}
                     />
                   )}
                 </createForm.Field>
@@ -228,36 +220,29 @@ export const LaunchStepToken = forwardRef<
                 <span className="font-medium">Total supply (tokens)</span>
                 <createForm.Field name="supply">
                   {(field) => (
-                    <input
+                    <Input
                       type="text"
                       inputMode="numeric"
                       value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}
-                      className={fieldClassName()}
                     />
                   )}
                 </createForm.Field>
               </label>
             </div>
           )}
-        </div>
+        </AppCard>
       )}
 
       {status !== "connected" && (
-        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-          Connect a wallet to continue.
-        </p>
+        <AppCallout tone="warning">Connect a wallet to continue.</AppCallout>
       )}
 
-      {error && (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      )}
+      {error && <AppCallout tone="error">{error}</AppCallout>}
 
       {isSending && (
-        <p className="text-sm text-muted">Confirm token creation in wallet…</p>
+        <p className="text-sm text-muted-foreground">Confirm token creation in wallet…</p>
       )}
     </div>
   );

@@ -11,6 +11,14 @@ import { useClaim } from "../../hooks/useClaim";
 import { useMerkleAllowlist } from "../../hooks/useMerkleAllowlist";
 import { formatCampaignTimestamp } from "../../lib/campaign-status";
 import { TruncatedExplorerLink, TruncatedTxLink } from "../Common/Common";
+import {
+  EntityCard,
+  EntityCardContent,
+  EntityCardFooter,
+  EntityCardHeader,
+} from "../Common/Common";
+import { AppCard, AppCallout } from "../Common/AppCard";
+import { Button } from "@/components/ui/button";
 import { formatTokens, computeVesting } from "../../lib/vesting";
 import { distributionPercent } from "../../solana/campaign-vault";
 
@@ -127,24 +135,25 @@ const SelectedCampaignPanel = ({ record }: Props) => {
   };
 
   return (
-    <div className="space-y-4 rounded-xl border border-border-low bg-background/60 p-5">
-      <div className="space-y-1">
-        <h3 className="text-lg font-semibold">Claim vested tokens</h3>
-        <p className="text-sm text-muted">
-          {effectiveFirstClaim
+    <EntityCard>
+      <EntityCardHeader
+        title="Claim vested tokens"
+        description={
+          effectiveFirstClaim
             ? "Provide merkle proofs and get your position minted"
-            : "No Merkle proof required, claim via your position"}
-        </p>
-      </div>
+            : "No Merkle proof required, claim via your position"
+        }
+      />
 
+      <EntityCardContent className="space-y-4">
       {status === "connected" && (
-        <div className="rounded-lg border border-border-low bg-card/40 px-3 py-3 space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">
+        <AppCard variant="inset" padding="sm" className="gap-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Your position
           </p>
           <dl className="grid gap-2 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-muted">Position NFT</dt>
+              <dt className="text-muted-foreground">Position NFT</dt>
               <dd className="text-right text-xs">
                 <PositionStatus
                   loading={statusLoading}
@@ -157,7 +166,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
             </div>
             {allocation != null && (
               <div className="flex justify-between gap-4">
-                <dt className="text-muted">Allocation</dt>
+                <dt className="text-muted-foreground">Allocation</dt>
                 <dd className="font-mono text-xs">
                   {formatTokens(Number(allocation))} tokens
                 </dd>
@@ -166,13 +175,13 @@ const SelectedCampaignPanel = ({ record }: Props) => {
             {!effectiveFirstClaim && (
               <>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted">Claimed so far</dt>
+                  <dt className="text-muted-foreground">Claimed so far</dt>
                   <dd className="font-mono text-xs">
                     {formatTokens(Number(claimedSoFar))} tokens
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted">Claimable now</dt>
+                  <dt className="text-muted-foreground">Claimable now</dt>
                   <dd className="font-mono text-xs text-emerald-300">
                     {formatTokens(claimableNow)} tokens
                   </dd>
@@ -183,7 +192,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
               allowlist?.onList &&
               expectedFirstClaim != null && (
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted">Vested at first claim</dt>
+                  <dt className="text-muted-foreground">Vested at first claim</dt>
                   <dd className="font-mono text-xs text-emerald-300">
                     ~{formatTokens(expectedFirstClaim)} tokens
                   </dd>
@@ -191,19 +200,19 @@ const SelectedCampaignPanel = ({ record }: Props) => {
               )}
             {position && (
               <div className="flex justify-between gap-4">
-                <dt className="text-muted">Asset</dt>
+                <dt className="text-muted-foreground">Asset</dt>
                 <dd className="text-xs">
                   <TruncatedExplorerLink address={String(position.asset)} />
                 </dd>
               </div>
             )}
           </dl>
-        </div>
+        </AppCard>
       )}
 
       <dl className="grid gap-2 text-sm">
         <div className="flex justify-between gap-4">
-          <dt className="text-muted">Distributed (all wallets)</dt>
+          <dt className="text-muted-foreground">Distributed (all wallets)</dt>
           <dd className="text-right font-mono text-xs">
             {distributionLoading
               ? "Checking vault…"
@@ -213,7 +222,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
           </dd>
         </div>
         <div className="flex justify-between gap-4">
-          <dt className="text-muted">Window</dt>
+          <dt className="text-muted-foreground">Window</dt>
           <dd className="text-right font-mono text-xs">
             {formatCampaignTimestamp(record.account.start)} →{" "}
             {formatCampaignTimestamp(
@@ -222,7 +231,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
           </dd>
         </div>
         <div className="flex justify-between gap-4">
-          <dt className="text-muted">Collection</dt>
+          <dt className="text-muted-foreground">Collection</dt>
           <dd className="text-xs">
             <TruncatedExplorerLink
               address={String(record.account.collection)}
@@ -230,7 +239,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
           </dd>
         </div>
         <div className="flex justify-between gap-4">
-          <dt className="text-muted">Token mint</dt>
+          <dt className="text-muted-foreground">Token mint</dt>
           <dd className="text-xs">
             <TruncatedExplorerLink
               address={String(record.account.mintToDistribute)}
@@ -240,20 +249,18 @@ const SelectedCampaignPanel = ({ record }: Props) => {
       </dl>
 
       {status !== "connected" && (
-        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-          Connect a wallet to claim.
-        </p>
+        <AppCallout tone="warning">Connect a wallet to claim.</AppCallout>
       )}
 
       {campaignStatus === "closed" && (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <AppCallout tone="error">
           Claim window closed for this campaign. Deploy a fresh campaign on
           devnet to test live claims.
-        </p>
+        </AppCallout>
       )}
 
       {campaignStatus === "upcoming" && status === "connected" && (
-        <p className="rounded-lg border border-border-low px-3 py-2 text-sm text-muted">
+        <AppCard variant="inset" padding="sm" className="text-muted-foreground">
           Claims open {formatCampaignTimestamp(record.account.start)}.
           {allowlistLoading
             ? " Checking allowlist…"
@@ -262,7 +269,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
               : effectiveFirstClaim
                 ? " This wallet isn't on this campaign's allowlist."
                 : null}
-        </p>
+        </AppCard>
       )}
 
       {campaignStatus !== "upcoming" &&
@@ -271,29 +278,25 @@ const SelectedCampaignPanel = ({ record }: Props) => {
         !allowlist.onList &&
         !allowlistLoading &&
         status === "connected" && (
-          <p className="rounded-lg border border-border-low px-3 py-2 text-sm text-muted">
+          <AppCard variant="inset" padding="sm" className="text-muted-foreground">
             This wallet is not on this campaign&apos;s allowlist.
-          </p>
+          </AppCard>
         )}
 
       {!effectiveFirstClaim &&
         !holdsAsset &&
         hasAsset &&
         status === "connected" && (
-          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+          <AppCallout tone="warning">
             You must hold the position NFT in this wallet to claim again.
-          </p>
+          </AppCallout>
         )}
 
-      {error && (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      )}
+      {error && <AppCallout tone="error">{error}</AppCallout>}
 
       {lastResult && (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm space-y-1">
-          <p className="font-medium text-emerald-200">
+        <AppCallout tone="success" className="space-y-1">
+          <p className="font-medium">
             Claim confirmed — received{" "}
             {formatTokens(Number(lastResult.received))} tokens
           </p>
@@ -303,19 +306,22 @@ const SelectedCampaignPanel = ({ record }: Props) => {
             tail={10}
           />
           <div>
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="xs"
+              className="h-auto p-0 text-xs text-muted-foreground"
               onClick={() => clearResult()}
-              className="text-xs text-muted underline underline-offset-2 cursor-pointer"
             >
               Dismiss
-            </button>
+            </Button>
           </div>
-        </div>
+        </AppCallout>
       )}
+      </EntityCardContent>
 
-      <div className="flex flex-wrap gap-3">
-        <button
+      <EntityCardFooter className="flex flex-wrap gap-3">
+        <Button
           type="button"
           onClick={() =>
             void claim().then((result) => {
@@ -323,23 +329,18 @@ const SelectedCampaignPanel = ({ record }: Props) => {
             })
           }
           disabled={!canSubmit || statusLoading || allowlistLoading}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
         >
           {isSending
             ? "Confirm in wallet…"
             : effectiveFirstClaim
               ? "First claim (mint position)"
               : "Claim vested tokens"}
-        </button>
-        <button
-          type="button"
-          onClick={refreshAll}
-          className="rounded-lg border border-border-low px-4 py-2 text-sm transition hover:border-accent/30 cursor-pointer"
-        >
+        </Button>
+        <Button type="button" variant="outline" onClick={refreshAll}>
           Refresh status
-        </button>
-      </div>
-    </div>
+        </Button>
+      </EntityCardFooter>
+    </EntityCard>
   );
 };
 
