@@ -2,12 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import type { Address } from "@solana/addresses";
 import { useSolanaClient } from "@solana/react-hooks";
 import {
-  fetchSortedCampaigns,
   getUserClaimState,
   type CampaignRecord,
 } from "../solana/vesting-positions";
 import { fetchCampaignDistributionStats } from "../solana/campaign-vault";
 import { fetchUserCampaignPosition } from "../solana/profile-data";
+import { useCampaignList } from "./useCampaignList";
 import {
   getCampaignStatus,
   type CampaignStatus,
@@ -28,13 +28,7 @@ export function useCampaignStatus(campaign: CampaignData): CampaignStatus {
 }
 
 export function useCampaigns() {
-  const client = useSolanaClient();
-
-  const query = useQuery({
-    queryKey: queryKeys.campaigns(),
-    queryFn: () => fetchSortedCampaigns(client.runtime.rpc),
-    staleTime: QUERY_STALE.campaigns,
-  });
+  const query = useCampaignList();
 
   return {
     campaigns: query.data ?? [],

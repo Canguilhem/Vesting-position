@@ -61,6 +61,8 @@ export type CampaignData = {
 export type CampaignRecord = {
   address: Address;
   account: CampaignData;
+  /** From Supabase registry when the campaign was launched via the app. */
+  registryName?: string | null;
 };
 
 function toCampaignData(campaign: Campaign): CampaignData {

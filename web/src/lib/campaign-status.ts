@@ -22,12 +22,13 @@ export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
   closed: "Claim window closed",
 };
 
-export const CAMPAIGN_STATUS_COLORS: Record<CampaignStatus, string> = {
-  upcoming: "bg-zinc-500/20 text-zinc-300",
-  active: "bg-emerald-500/20 text-emerald-300",
-  grace: "bg-amber-500/20 text-amber-300",
-  closed: "bg-red-500/20 text-red-300",
-};
+/** Badge `variant` for each campaign phase — matches `Badge` in ui/badge. */
+export const CAMPAIGN_STATUS_VARIANT = {
+  upcoming: "upcoming",
+  active: "active",
+  grace: "grace",
+  closed: "closed",
+} as const satisfies Record<CampaignStatus, string>;
 
 export const TRANSFERABLE_PILL = {
   true: {
@@ -38,6 +39,17 @@ export const TRANSFERABLE_PILL = {
     label: "Frozen",
     className: "bg-zinc-500/20 text-zinc-400",
   },
+} as const;
+
+/** Badge `variant` for position NFT transferability. */
+export const CAMPAIGN_TRANSFER_VARIANT = {
+  true: "transferable",
+  false: "non-transferable",
+} as const;
+
+export const CAMPAIGN_TRANSFER_LABELS = {
+  true: "Transferable",
+  false: "Non-transferable",
 } as const;
 
 /** 100% cliff release = full allocation at cliff (airdrop-style); otherwise linear vesting. */
@@ -51,18 +63,15 @@ export function getCampaignDistributionType(
   return cliffReleaseBps >= FULL_CLIFF_RELEASE_BPS ? "airdrop" : "vesting";
 }
 
-export const CAMPAIGN_TYPE_PILL: Record<
-  CampaignDistributionType,
-  { label: string; className: string }
-> = {
-  airdrop: {
-    label: "Airdrop",
-    className: "bg-violet-500/20 text-violet-300",
-  },
-  vesting: {
-    label: "Vesting",
-    className: "bg-indigo-500/20 text-indigo-300",
-  },
+/** Badge `variant` for distribution type — matches `Badge` in ui/badge. */
+export const CAMPAIGN_TYPE_VARIANT = {
+  airdrop: "airdrop",
+  vesting: "vesting",
+} as const satisfies Record<CampaignDistributionType, string>;
+
+export const CAMPAIGN_TYPE_LABELS: Record<CampaignDistributionType, string> = {
+  airdrop: "Airdrop",
+  vesting: "Vesting",
 };
 
 export function bytesToHex(bytes: Uint8Array): string {
@@ -78,12 +87,52 @@ export function formatCampaignTimestamp(unixSec: number): string {
   });
 }
 
+export function formatCampaignDateShort(unixSec: number): string {
+  return new Date(unixSec * 1000).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "2-digit",
+  });
+}
+
+export function formatCampaignDateRange(campaign: CampaignData): string {
+  const start = formatCampaignDateShort(campaign.start);
+  const end = formatCampaignDateShort(campaign.end + campaign.gracePeriod);
+  return `${start} – ${end}`;
+}
+
+/** Elapsed % through [start, end + grace]. */
+export function campaignWindowElapsedPercent(
+  campaign: CampaignData,
+  nowSec = Math.floor(Date.now() / 1000),
+): number {
+  const windowEnd = campaign.end + campaign.gracePeriod;
+  const total = windowEnd - campaign.start;
+  if (total <= 0) return 100;
+  if (nowSec <= campaign.start) return 0;
+  if (nowSec >= windowEnd) return 100;
+  return ((nowSec - campaign.start) / total) * 100;
+}
+
+export function formatCampaignWindowShort(
+  campaign: CampaignData,
+  nowSec = Math.floor(Date.now() / 1000),
+): string {
+  const pct = campaignWindowElapsedPercent(campaign, nowSec);
+  const start = formatCampaignDateShort(campaign.start);
+  const end = formatCampaignDateShort(campaign.end + campaign.gracePeriod);
+  return `${pct.toFixed(0)}% · ${start} – ${end}`;
+}
+
 /** Human-readable duration from on-chain seconds (avoids raw `sec / 86400` floats). */
 export function formatDurationSec(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   if (s >= 86_400) {
     const days = s / 86_400;
-    return Number.isInteger(days) ? `${days} days` : `${days.toFixed(1)} days`;
+    if (Number.isInteger(days)) {
+      return days === 1 ? "1 day" : `${days} days`;
+    }
+    return `${days.toFixed(1)} days`;
   }
   if (s >= 3_600) {
     const hours = s / 3_600;
@@ -94,4 +143,9 @@ export function formatDurationSec(seconds: number): string {
     return minutes === 1 ? "1 minute" : `${minutes} minutes`;
   }
   return s === 1 ? "1 second" : `${s} seconds`;
+}
+
+export function formatCliffDuration(cliffDurationSec: number): string {
+  if (cliffDurationSec <= 0) return "No cliff";
+  return formatDurationSec(cliffDurationSec);
 }

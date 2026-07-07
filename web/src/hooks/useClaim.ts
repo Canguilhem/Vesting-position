@@ -15,6 +15,8 @@ import {
 import { fetchUserCampaignPosition } from "../solana/profile-data";
 import { useSendWalletTransaction } from "./useSendWalletTransaction";
 import { invalidateAfterOnChainWrite } from "../lib/invalidate-on-chain-queries";
+import { toastTransactionSuccess } from "../lib/transaction-toast";
+import { formatTokens } from "../lib/vesting";
 
 function explorerTxUrl(signature: string): string {
   return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
@@ -37,7 +39,6 @@ export function useClaim(record: CampaignRecord) {
   const { sendWithWallet, isSending, signature, error, reset, isConnected } =
     useSendWalletTransaction();
   const [localError, setLocalError] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<ClaimResult | null>(null);
 
   const claim = useCallback(async (): Promise<ClaimResult | null> => {
     if (!isConnected) {
@@ -46,7 +47,6 @@ export function useClaim(record: CampaignRecord) {
     }
 
     setLocalError(null);
-    setLastResult(null);
     reset();
 
     try {
@@ -116,7 +116,7 @@ export function useClaim(record: CampaignRecord) {
             assetAddress: positionBefore?.asset,
           }),
         ];
-      }, { successMessage: "Claim confirmed" });
+      }, { successMessage: "Claim confirmed", skipSuccessToast: true });
 
       if (walletForInvalidation) {
         invalidateAfterOnChainWrite(queryClient, walletForInvalidation);
@@ -151,7 +151,13 @@ export function useClaim(record: CampaignRecord) {
         explorerTxUrl: explorerTxUrl(sig),
         received,
       };
-      setLastResult(result);
+      toastTransactionSuccess(
+        sig,
+        "Claim confirmed",
+        received > 0n
+          ? `Received ${formatTokens(Number(received))} tokens`
+          : undefined,
+      );
       return result;
     } catch (err) {
       setLocalError(parseProgramError(err));
@@ -172,10 +178,8 @@ export function useClaim(record: CampaignRecord) {
     claim,
     isSending,
     signature,
-    lastResult,
     explorerTxUrl: signature ? explorerTxUrl(signature) : null,
     error: txError,
     canClaim: isConnected,
-    clearResult: () => setLastResult(null),
   };
 }

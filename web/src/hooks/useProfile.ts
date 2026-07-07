@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { address, type Address } from "@solana/addresses";
 import { useSolanaClient, useWalletConnection } from "@solana/react-hooks";
 import { loadSavedTokens, type SavedToken } from "../lib/token-registry";
@@ -7,10 +7,8 @@ import { paginateSlice } from "../lib/pagination";
 import { QUERY_STALE } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 import { fetchWalletTokenBalance } from "../solana/token-balance";
-import {
-  fetchSortedCampaigns,
-  type CampaignRecord,
-} from "../solana/vesting-positions";
+import { useCampaignList } from "./useCampaignList";
+import type { CampaignRecord } from "../solana/vesting-positions";
 import {
   dedupePositions,
   filterCampaignsByCreator,
@@ -19,20 +17,7 @@ import {
   scanCampaignsForPositions,
   type PositionRecord,
 } from "../solana/profile-data";
-
-type AppRpc = ReturnType<typeof useSolanaClient>["runtime"]["rpc"];
-
-async function ensureCampaigns(
-  queryClient: QueryClient,
-  rpc: AppRpc,
-  cached: CampaignRecord[] | undefined,
-): Promise<CampaignRecord[]> {
-  if (cached) return cached;
-  return queryClient.fetchQuery({
-    queryKey: queryKeys.campaigns(),
-    queryFn: () => fetchSortedCampaigns(rpc),
-  });
-}
+import { sortPositionsForProfile } from "../lib/profile-positions";
 
 export type ProfileMint = {
   mint: Address;
@@ -71,21 +56,13 @@ export function useProfile() {
   const [mintPage, setMintPage] = useState(0);
   const [positionPage, setPositionPage] = useState(0);
 
-  const campaignsQuery = useQuery({
-    queryKey: queryKeys.campaigns(),
-    queryFn: () => fetchSortedCampaigns(client.runtime.rpc),
-    enabled: connected,
-    staleTime: QUERY_STALE.campaigns,
-  });
+  const campaignsQuery = useCampaignList({ enabled: connected });
+  const allCampaigns = campaignsQuery.data;
 
   const profileQuery = useQuery({
     queryKey: queryKeys.profile(walletKey),
     queryFn: async () => {
-      const campaigns = await ensureCampaigns(
-        queryClient,
-        client.runtime.rpc,
-        campaignsQuery.data,
-      );
+      const campaigns = allCampaigns!;
 
       const createdCampaigns = filterCampaignsByCreator(
         campaigns,
@@ -106,23 +83,17 @@ export function useProfile() {
         allCampaignsCount: campaigns.length,
       } satisfies ProfileData;
     },
-    enabled: connected && campaignsQuery.isSuccess,
+    enabled: connected && !!allCampaigns,
     staleTime: QUERY_STALE.profile,
   });
 
   const positionsQuery = useInfiniteQuery({
     queryKey: queryKeys.profilePositions(walletKey),
     queryFn: async ({ pageParam }) => {
-      const campaigns = await ensureCampaigns(
-        queryClient,
-        client.runtime.rpc,
-        campaignsQuery.data,
-      );
-
       return scanCampaignsForPositions(
         client.runtime.rpc,
         walletAddress!,
-        campaigns,
+        allCampaigns!,
         pageParam,
         POSITION_CAMPAIGN_SCAN_BATCH,
       );
@@ -130,7 +101,7 @@ export function useProfile() {
     initialPageParam: 0,
     getNextPageParam: (lastPage) =>
       lastPage.done ? undefined : lastPage.nextCampaignIndex,
-    enabled: connected && campaignsQuery.isSuccess,
+    enabled: connected && !!allCampaigns,
   });
 
   const positionsState = useMemo((): PositionsState => {
@@ -140,11 +111,11 @@ export function useProfile() {
     return {
       items: dedupePositions(pages.flatMap((page) => page.positions)),
       campaignsScanned: lastPage?.campaignsScanned ?? 0,
-      campaignsTotal: lastPage?.campaignsTotal ?? campaignsQuery.data?.length ?? 0,
+      campaignsTotal: lastPage?.campaignsTotal ?? allCampaigns?.length ?? 0,
       done: lastPage?.done ?? false,
       loading: positionsQuery.isFetchingNextPage,
     };
-  }, [positionsQuery, campaignsQuery.data?.length]);
+  }, [positionsQuery, allCampaigns?.length]);
 
   const refresh = useCallback(async () => {
     if (!connected) return;
@@ -195,7 +166,7 @@ export function useProfile() {
     : null;
 
   const positionSlice = paginateSlice(
-    positionsState.items,
+    sortPositionsForProfile(positionsState.items),
     positionPage,
     PROFILE_LIST_PAGE_SIZE,
   );

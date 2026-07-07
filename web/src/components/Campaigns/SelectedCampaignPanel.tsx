@@ -10,54 +10,183 @@ import {
 import { useClaim } from "../../hooks/useClaim";
 import { useMerkleAllowlist } from "../../hooks/useMerkleAllowlist";
 import { formatCampaignTimestamp } from "../../lib/campaign-status";
-import { TruncatedExplorerLink, TruncatedTxLink } from "../Common/Common";
+import {
+  getCampaignDisplayName,
+  campaignHasRegistryName,
+} from "../../lib/campaign-display";
+import {
+  CAMPAIGN_STATUS_LABELS,
+  CAMPAIGN_STATUS_VARIANT,
+  CAMPAIGN_TRANSFER_LABELS,
+  CAMPAIGN_TRANSFER_VARIANT,
+  CAMPAIGN_TYPE_LABELS,
+  CAMPAIGN_TYPE_VARIANT,
+  formatCampaignDateRange,
+  formatCliffDuration,
+  getCampaignDistributionType,
+} from "../../lib/campaign-status";
+import { TruncatedExplorerLink } from "../Common/Common";
 import {
   EntityCard,
   EntityCardContent,
   EntityCardFooter,
-  EntityCardHeader,
 } from "../Common/Common";
 import { AppCard, AppCallout } from "../Common/AppCard";
+import { Badge } from "@/components/ui/badge";
+import { ClaimProgressHeader } from "../ClaimProgress";
 import { Button } from "@/components/ui/button";
-import { formatTokens, computeVesting } from "../../lib/vesting";
+import { cn } from "@/lib/utils";
+import { computePctClaimed } from "../../lib/claim-progress";
+import { formatTokens, formatPercent, computeVesting } from "../../lib/vesting";
 import { distributionPercent } from "../../solana/campaign-vault";
 
 type Props = {
   record: CampaignRecord;
 };
 
-function PositionStatus({
-  loading,
-  hasReceipt,
-  hasAsset,
-  holdsAsset,
-  transferredAway,
+function CampaignSettingsTable({
+  record,
+  distribution,
+  distributionLoading,
 }: {
-  loading: boolean;
-  hasReceipt: boolean;
-  hasAsset: boolean;
-  holdsAsset: boolean;
-  transferredAway: boolean;
+  record: CampaignRecord;
+  distribution: {
+    distributed: bigint;
+    totalDeposit: bigint;
+  } | null;
+  distributionLoading: boolean;
 }) {
-  if (loading) return <>Checking…</>;
+  const claimWindowTitle = `${formatCampaignTimestamp(record.account.start)} → ${formatCampaignTimestamp(record.account.end + record.account.gracePeriod)}`;
+  const showCampaignAddress = !campaignHasRegistryName(record);
 
-  if (!hasReceipt && !hasAsset) {
-    return <>No position NFT: first claim mints one</>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-muted-foreground">
+            <th className="pb-2 pr-2 text-left font-medium">Deposited</th>
+            <th className="pb-2 px-2 text-right font-medium">Paid out</th>
+            <th className="pb-2 px-2 text-right font-medium">Cliff</th>
+            <th className="pb-2 px-2 text-right font-medium">Cliff %</th>
+            <th className="pb-2 pl-2 text-right font-medium">Claim window</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="font-mono text-foreground">
+            <td className="pr-2 text-left">
+              {formatTokens(record.account.totalDeposit)}
+            </td>
+            <td className="px-2 text-right">
+              {distributionLoading ? (
+                <span className="text-muted-foreground">…</span>
+              ) : distribution ? (
+                <>
+                  {formatTokens(Number(distribution.distributed))}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    (
+                    {distributionPercent(
+                      distribution.distributed,
+                      distribution.totalDeposit,
+                    ).toFixed(1)}
+                    %)
+                  </span>
+                </>
+              ) : (
+                "—"
+              )}
+            </td>
+            <td className="px-2 text-right">
+              {formatCliffDuration(record.account.cliffDuration)}
+            </td>
+            <td className="px-2 text-right">
+              {formatPercent(record.account.cliffReleaseBps)}
+            </td>
+            <td
+              className="pl-2 text-right"
+              title={claimWindowTitle}
+            >
+              {formatCampaignDateRange(record.account)}
+            </td>
+          </tr>
+          <tr className="border-t border-border-low/60">
+            <td colSpan={2} className="pt-3 align-top pr-2">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Collection
+              </p>
+              <TruncatedExplorerLink
+                address={String(record.account.collection)}
+              />
+            </td>
+            <td colSpan={showCampaignAddress ? 2 : 3} className="pt-3 align-top px-2">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Token mint
+              </p>
+              <TruncatedExplorerLink
+                address={String(record.account.mintToDistribute)}
+              />
+            </td>
+            {showCampaignAddress && (
+              <td className="pt-3 align-top pl-2">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Campaign
+                </p>
+                <TruncatedExplorerLink address={String(record.address)} />
+              </td>
+            )}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PositionAmountsTable({
+  allocation,
+  claimedSoFar,
+  claimable,
+  loading = false,
+}: {
+  allocation: bigint;
+  claimedSoFar: bigint;
+  claimable: number;
+  loading?: boolean;
+}) {
+  if (loading) {
+    return <p className="text-xs text-muted-foreground">Checking position…</p>;
   }
 
-  if (holdsAsset) {
-    return <>Position NFT minted: you hold it</>;
-  }
-
-  if (transferredAway) {
-    return <>Position NFT exists: you minted but no longer hold it</>;
-  }
-
-  if (hasAsset) {
-    return <>Position NFT exists: held by another wallet</>;
-  }
-
-  return <>Claim receipt on-chain: asset account missing</>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-muted-foreground">
+            <th className="pb-2 pr-2 text-left font-medium">Allocation</th>
+            <th className="pb-2 px-2 text-right font-medium">Claimed</th>
+            <th className="pb-2 pl-2 text-right font-medium">Claimable</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr className="font-mono text-foreground">
+            <td className="pr-2 text-left">
+              {formatTokens(Number(allocation))}
+            </td>
+            <td className="px-2 text-right">
+              {formatTokens(Number(claimedSoFar))}
+            </td>
+            <td
+              className={cn(
+                "pl-2 text-right",
+                claimable > 0 ? "text-emerald-300" : "text-muted-foreground"
+              )}
+            >
+              {formatTokens(claimable)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 const SelectedCampaignPanel = ({ record }: Props) => {
@@ -67,7 +196,6 @@ const SelectedCampaignPanel = ({ record }: Props) => {
   const {
     isFirstClaim,
     hasAsset,
-    hasReceipt,
     loading: claimStateLoading,
     refresh: refreshClaimState,
   } = useUserClaimState(record.address, userAddress);
@@ -78,8 +206,7 @@ const SelectedCampaignPanel = ({ record }: Props) => {
     refresh: refreshPosition,
   } = useCampaignPosition(record, userAddress);
 
-  const { claim, isSending, lastResult, error, canClaim, clearResult } =
-    useClaim(record);
+  const { claim, isSending, canClaim } = useClaim(record);
 
   const { allowlist, loading: allowlistLoading } = useMerkleAllowlist(
     String(record.address),
@@ -94,26 +221,35 @@ const SelectedCampaignPanel = ({ record }: Props) => {
   } = useCampaignDistribution(record);
 
   const campaignStatus = useCampaignStatus(record.account);
+  const campaignType = getCampaignDistributionType(
+    record.account.cliffReleaseBps,
+  );
+  const transferKey = String(record.account.isTransferable) as "true" | "false";
   const holdsAsset =
     position != null &&
     userAddress != null &&
     String(position.owner) === String(userAddress);
+  const transferredAway = position?.transferredAway ?? false;
   const isSubsequentHolder = holdsAsset && position != null;
   const effectiveFirstClaim = isFirstClaim && !isSubsequentHolder;
   const statusLoading = claimStateLoading || positionLoading;
-
-  const canSubmit =
-    canClaim &&
-    !isSending &&
-    campaignStatus !== "closed" &&
-    campaignStatus !== "upcoming" &&
-    (effectiveFirstClaim ? allowlist?.onList === true : holdsAsset);
 
   const allocation =
     position?.attributes.allocation ??
     (allowlist?.onList ? allowlist.allocation : null);
   const claimedSoFar = position?.attributes.claimedSoFar ?? 0n;
   const claimableNow = position?.claimable ?? 0;
+  const fullyClaimed =
+    position != null && allocation != null && claimedSoFar >= allocation;
+  const pctClaimed =
+    allocation != null ? computePctClaimed(claimedSoFar, allocation) : 0;
+  const showClaimProgressBadge =
+    status === "connected" &&
+    allocation != null &&
+    !transferredAway &&
+    (position != null || allowlist?.onList === true);
+  const isLoyaltyBadgeFrozen =
+    fullyClaimed && position?.isFrozen && record.account.isTransferable;
 
   const expectedFirstClaim = useMemo(() => {
     if (!effectiveFirstClaim || !allowlist?.onList) return null;
@@ -128,214 +264,205 @@ const SelectedCampaignPanel = ({ record }: Props) => {
     }).claimable;
   }, [effectiveFirstClaim, allowlist, record.account]);
 
+  const effectiveClaimable = effectiveFirstClaim
+    ? (expectedFirstClaim ?? 0)
+    : claimableNow;
+
+  const canSubmit =
+    canClaim &&
+    !isSending &&
+    !fullyClaimed &&
+    campaignStatus !== "closed" &&
+    campaignStatus !== "upcoming" &&
+    (effectiveFirstClaim
+      ? allowlist?.onList === true && effectiveClaimable > 0
+      : holdsAsset && claimableNow > 0);
+
+  const positionChecking = statusLoading || allowlistLoading;
+
+  const emptyPositionMessage = (() => {
+    if (positionChecking) return null;
+    if (campaignStatus === "upcoming") {
+      if (allowlist?.onList) {
+        return `Claims open ${formatCampaignTimestamp(record.account.start)}. You're on the allowlist (${formatTokens(Number(allowlist.allocation))} tokens allocated).`;
+      }
+      if (effectiveFirstClaim) {
+        return `Claims open ${formatCampaignTimestamp(record.account.start)}. This wallet isn't on this campaign's allowlist.`;
+      }
+      return `Claims open ${formatCampaignTimestamp(record.account.start)}.`;
+    }
+    if (effectiveFirstClaim && allowlist && !allowlist.onList) {
+      return "This wallet isn't on this campaign's allowlist.";
+    }
+    return "No position for this wallet yet.";
+  })();
+
   const refreshAll = () => {
     void refreshClaimState();
     void refreshPosition();
     void refreshDistribution();
   };
 
+  const campaignDetails = (
+    <AppCard variant="inset" padding="sm" className="gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-foreground">
+            {getCampaignDisplayName(record)}
+          </p>
+          {campaignHasRegistryName(record) && (
+            <div className="mt-0.5">
+              <TruncatedExplorerLink address={String(record.address)} />
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant={CAMPAIGN_STATUS_VARIANT[campaignStatus]}>
+            {CAMPAIGN_STATUS_LABELS[campaignStatus]}
+          </Badge>
+          <Badge variant={CAMPAIGN_TYPE_VARIANT[campaignType]}>
+            {CAMPAIGN_TYPE_LABELS[campaignType]}
+          </Badge>
+          <Badge variant={CAMPAIGN_TRANSFER_VARIANT[transferKey]}>
+            {CAMPAIGN_TRANSFER_LABELS[transferKey]}
+          </Badge>
+        </div>
+      </div>
+      <CampaignSettingsTable
+        record={record}
+        distribution={distribution}
+        distributionLoading={distributionLoading}
+      />
+    </AppCard>
+  );
+
   return (
     <EntityCard>
-      <EntityCardHeader
-        title="Claim vested tokens"
-        description={
-          effectiveFirstClaim
-            ? "Provide merkle proofs and get your position minted"
-            : "No Merkle proof required, claim via your position"
-        }
-      />
-
       <EntityCardContent className="space-y-4">
-      {status === "connected" && (
-        <AppCard variant="inset" padding="sm" className="gap-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Your position
-          </p>
-          <dl className="grid gap-2 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Position NFT</dt>
-              <dd className="text-right text-xs">
-                <PositionStatus
-                  loading={statusLoading}
-                  hasReceipt={hasReceipt}
-                  hasAsset={hasAsset}
-                  holdsAsset={holdsAsset}
-                  transferredAway={position?.transferredAway ?? false}
-                />
-              </dd>
+        {campaignDetails}
+
+        {status !== "connected" && (
+          <AppCallout tone="warning">Connect a wallet to claim.</AppCallout>
+        )}
+
+        {status === "connected" && transferredAway && position && (
+          <AppCallout tone="warning" className="space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <Badge variant="transferred">Transferred</Badge>
             </div>
-            {allocation != null && (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Allocation</dt>
-                <dd className="font-mono text-xs">
-                  {formatTokens(Number(allocation))} tokens
-                </dd>
-              </div>
-            )}
-            {!effectiveFirstClaim && (
-              <>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Claimed so far</dt>
-                  <dd className="font-mono text-xs">
-                    {formatTokens(Number(claimedSoFar))} tokens
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Claimable now</dt>
-                  <dd className="font-mono text-xs text-emerald-300">
-                    {formatTokens(claimableNow)} tokens
-                  </dd>
-                </div>
-              </>
-            )}
-            {effectiveFirstClaim &&
-              allowlist?.onList &&
-              expectedFirstClaim != null && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Vested at first claim</dt>
-                  <dd className="font-mono text-xs text-emerald-300">
-                    ~{formatTokens(expectedFirstClaim)} tokens
-                  </dd>
-                </div>
-              )}
-            {position && (
+            <p className="text-center text-xs opacity-90">
+              You minted this position but no longer hold the NFT. Claim rights
+              follow the current holder.
+            </p>
+            <dl className="grid gap-1.5 text-xs">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Asset</dt>
-                <dd className="text-xs">
+                <dd>
                   <TruncatedExplorerLink address={String(position.asset)} />
                 </dd>
               </div>
-            )}
-          </dl>
-        </AppCard>
-      )}
-
-      <dl className="grid gap-2 text-sm">
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">Distributed (all wallets)</dt>
-          <dd className="text-right font-mono text-xs">
-            {distributionLoading
-              ? "Checking vault…"
-              : distribution
-                ? `${formatTokens(distribution.distributed)} / ${formatTokens(distribution.totalDeposit)} (${distributionPercent(distribution.distributed, distribution.totalDeposit).toFixed(1)}%)`
-                : "—"}
-          </dd>
-        </div>
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">Window</dt>
-          <dd className="text-right font-mono text-xs">
-            {formatCampaignTimestamp(record.account.start)} →{" "}
-            {formatCampaignTimestamp(
-              record.account.end + record.account.gracePeriod
-            )}
-          </dd>
-        </div>
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">Collection</dt>
-          <dd className="text-xs">
-            <TruncatedExplorerLink
-              address={String(record.account.collection)}
-            />
-          </dd>
-        </div>
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">Token mint</dt>
-          <dd className="text-xs">
-            <TruncatedExplorerLink
-              address={String(record.account.mintToDistribute)}
-            />
-          </dd>
-        </div>
-      </dl>
-
-      {status !== "connected" && (
-        <AppCallout tone="warning">Connect a wallet to claim.</AppCallout>
-      )}
-
-      {campaignStatus === "closed" && (
-        <AppCallout tone="error">
-          Claim window closed for this campaign. Deploy a fresh campaign on
-          devnet to test live claims.
-        </AppCallout>
-      )}
-
-      {campaignStatus === "upcoming" && status === "connected" && (
-        <AppCard variant="inset" padding="sm" className="text-muted-foreground">
-          Claims open {formatCampaignTimestamp(record.account.start)}.
-          {allowlistLoading
-            ? " Checking allowlist…"
-            : allowlist?.onList
-              ? ` You're on the allowlist (${formatTokens(Number(allowlist.allocation))} tokens allocated).`
-              : effectiveFirstClaim
-                ? " This wallet isn't on this campaign's allowlist."
-                : null}
-        </AppCard>
-      )}
-
-      {campaignStatus !== "upcoming" &&
-        effectiveFirstClaim &&
-        allowlist &&
-        !allowlist.onList &&
-        !allowlistLoading &&
-        status === "connected" && (
-          <AppCard variant="inset" padding="sm" className="text-muted-foreground">
-            This wallet is not on this campaign&apos;s allowlist.
-          </AppCard>
-        )}
-
-      {!effectiveFirstClaim &&
-        !holdsAsset &&
-        hasAsset &&
-        status === "connected" && (
-          <AppCallout tone="warning">
-            You must hold the position NFT in this wallet to claim again.
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Current holder</dt>
+                <dd>
+                  <TruncatedExplorerLink address={String(position.owner)} />
+                </dd>
+              </div>
+            </dl>
           </AppCallout>
         )}
 
-      {error && <AppCallout tone="error">{error}</AppCallout>}
+        {status === "connected" && !transferredAway && allocation == null && (
+          <AppCard variant="inset" padding="sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Your position
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {positionChecking
+                ? "Checking position…"
+                : emptyPositionMessage}
+            </p>
+          </AppCard>
+        )}
 
-      {lastResult && (
-        <AppCallout tone="success" className="space-y-1">
-          <p className="font-medium">
-            Claim confirmed — received{" "}
-            {formatTokens(Number(lastResult.received))} tokens
-          </p>
-          <TruncatedTxLink
-            signature={lastResult.signature}
-            head={10}
-            tail={10}
-          />
-          <div>
-            <Button
-              type="button"
-              variant="link"
-              size="xs"
-              className="h-auto p-0 text-xs text-muted-foreground"
-              onClick={() => clearResult()}
+        {status === "connected" && !transferredAway && allocation != null && (
+          <AppCard variant="inset" padding="sm" className="gap-3">
+            {showClaimProgressBadge ? (
+              <ClaimProgressHeader
+                pct={pctClaimed}
+                frozen={isLoyaltyBadgeFrozen}
+              />
+            ) : (
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Your position
+              </p>
+            )}
+            {position && (
+              <div className="flex items-center justify-between gap-4 text-xs">
+                <span className="text-muted-foreground">Asset</span>
+                <TruncatedExplorerLink address={String(position.asset)} />
+              </div>
+            )}
+            {allocation != null && (
+              <PositionAmountsTable
+                allocation={allocation}
+                claimedSoFar={claimedSoFar}
+                claimable={effectiveClaimable}
+                loading={false}
+              />
+            )}
+          </AppCard>
+        )}
+
+        {!effectiveFirstClaim &&
+          !holdsAsset &&
+          hasAsset &&
+          !transferredAway &&
+          status === "connected" && (
+            <AppCallout tone="warning">
+              You must hold the position NFT in this wallet to claim again.
+            </AppCallout>
+          )}
+
+        {!effectiveFirstClaim &&
+          holdsAsset &&
+          claimableNow === 0 &&
+          !fullyClaimed &&
+          status === "connected" &&
+          (campaignStatus === "active" || campaignStatus === "grace") && (
+            <AppCard
+              variant="inset"
+              padding="sm"
+              className="text-xs text-muted-foreground"
             >
-              Dismiss
-            </Button>
-          </div>
-        </AppCallout>
-      )}
+              Nothing claimable right now — more tokens unlock as the vesting
+              schedule progresses.
+            </AppCard>
+          )}
+
       </EntityCardContent>
 
       <EntityCardFooter className="flex flex-wrap gap-3">
-        <Button
-          type="button"
-          onClick={() =>
-            void claim().then((result) => {
-              if (result) refreshAll();
-            })
-          }
-          disabled={!canSubmit || statusLoading || allowlistLoading}
-        >
-          {isSending
-            ? "Confirm in wallet…"
-            : effectiveFirstClaim
-              ? "First claim (mint position)"
-              : "Claim vested tokens"}
-        </Button>
+        {!fullyClaimed && !transferredAway && (
+          <Button
+            type="button"
+            onClick={() =>
+              void claim().then((result) => {
+                if (result) refreshAll();
+              })
+            }
+            disabled={!canSubmit || statusLoading || allowlistLoading}
+          >
+            {isSending
+              ? "Confirm in wallet…"
+              : effectiveFirstClaim
+                ? effectiveClaimable > 0
+                  ? "First claim (mint position)"
+                  : "Nothing claimable yet"
+                : holdsAsset && claimableNow === 0
+                  ? "Nothing claimable yet"
+                  : "Claim vested tokens"}
+          </Button>
+        )}
         <Button type="button" variant="outline" onClick={refreshAll}>
           Refresh status
         </Button>

@@ -10,6 +10,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       buffer: "buffer/",
     },
+    dedupe: ["react", "react-dom"],
   },
   define: {
     global: "globalThis",
@@ -41,7 +42,10 @@ export default defineConfig({
             return "solana";
           }
 
-          if (id.includes("@tanstack/")) {
+          if (
+            id.includes("@tanstack/") &&
+            !id.includes("@tanstack/react-table")
+          ) {
             return "tanstack";
           }
 

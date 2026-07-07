@@ -31,10 +31,12 @@ export function useSendWalletTransaction() {
         const sig = String(
           await send(walletSendPayload(walletSigner, instructions)),
         );
-        toastTransactionSuccess(
-          sig,
-          options?.successMessage ?? "Transaction confirmed",
-        );
+        if (!options?.skipSuccessToast) {
+          toastTransactionSuccess(
+            sig,
+            options?.successMessage ?? "Transaction confirmed",
+          );
+        }
         return sig;
       } catch (err) {
         toastTransactionError(

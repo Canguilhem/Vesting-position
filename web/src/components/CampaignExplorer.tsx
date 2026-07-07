@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreateTokenPanel } from "./CreateTokenPanel";
 import { LaunchCampaignWizard } from "./Launch/LaunchCampaignWizard";
-import CampaignCard from "./Campaigns/CampaignCard";
+import CampaignDataTable from "./Campaigns/CampaignDataTable";
 import SelectedCampaignPanel from "./Campaigns/SelectedCampaignPanel";
 import { AppCard, AppCallout } from "./Common/AppCard";
 import { EmptyState } from "./Common/Common";
@@ -103,29 +103,22 @@ export function CampaignExplorer() {
               <code className="font-mono text-xs">yarn test:devnet</code>.
             </p>
           ) : (
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-6">
+              {selectedRecord ? (
+                <SelectedCampaignPanel record={selectedRecord} />
+              ) : (
+                <EmptyState message="Select a campaign below to view details and claim." />
+              )}
+
               <div className="space-y-3">
                 <p className="text-sm font-medium">
                   {campaigns.length} campaign{campaigns.length === 1 ? "" : "s"}
                 </p>
-                <div className="max-h-[480px] space-y-3 overflow-y-auto pr-1">
-                  {campaigns.map((c) => (
-                    <CampaignCard
-                      key={c.address}
-                      record={c}
-                      selected={selected === c.address}
-                      onSelect={() => selectCampaign(c.address)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                {selectedRecord ? (
-                  <SelectedCampaignPanel record={selectedRecord} />
-                ) : (
-                  <EmptyState message="Select a campaign to view details and claim." />
-                )}
+                <CampaignDataTable
+                  campaigns={campaigns}
+                  selected={selected}
+                  onSelect={selectCampaign}
+                />
               </div>
             </div>
           )}

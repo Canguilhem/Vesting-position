@@ -5,14 +5,17 @@ import { truncate } from "./utils";
 export type TransactionToastOptions = {
   successMessage?: string;
   errorMessage?: string;
+  /** When set, caller shows success toast after extra post-tx work (e.g. polling). */
+  skipSuccessToast?: boolean;
 };
 
 export function toastTransactionSuccess(
   signature: string,
   message = "Transaction confirmed",
+  description?: string,
 ) {
   toast.success(message, {
-    description: truncate(signature, 8, 8),
+    description: description ?? truncate(signature, 8, 8),
     action: {
       label: "Explorer",
       onClick: () => window.open(explorerTxUrl(signature), "_blank", "noopener"),
