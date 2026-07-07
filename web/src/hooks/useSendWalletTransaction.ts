@@ -6,6 +6,11 @@ import {
   type WalletInstructionBuilder,
 } from "../solana/wallet-transaction";
 import { parseProgramError } from "../solana/vesting-positions";
+import {
+  toastTransactionError,
+  toastTransactionSuccess,
+  type TransactionToastOptions,
+} from "../lib/transaction-toast";
 
 /**
  * Shared send path for all wallet-signed transactions.
@@ -16,11 +21,28 @@ export function useSendWalletTransaction() {
   const { send, isSending, signature, error, reset } = useSendTransaction();
 
   const sendWithWallet = useCallback(
-    async (build: WalletInstructionBuilder): Promise<string> => {
-      const walletSigner = requireWalletSigner(wallet, status);
-      const instructions = await build(walletSigner);
-      const sig = await send(walletSendPayload(walletSigner, instructions));
-      return String(sig);
+    async (
+      build: WalletInstructionBuilder,
+      options?: TransactionToastOptions,
+    ): Promise<string> => {
+      try {
+        const walletSigner = requireWalletSigner(wallet, status);
+        const instructions = await build(walletSigner);
+        const sig = String(
+          await send(walletSendPayload(walletSigner, instructions)),
+        );
+        toastTransactionSuccess(
+          sig,
+          options?.successMessage ?? "Transaction confirmed",
+        );
+        return sig;
+      } catch (err) {
+        toastTransactionError(
+          err instanceof Error ? err : parseProgramError(err),
+          options?.errorMessage ?? "Transaction failed",
+        );
+        throw err;
+      }
     },
     [wallet, status, send],
   );

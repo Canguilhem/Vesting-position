@@ -116,7 +116,7 @@ export function useClaim(record: CampaignRecord) {
             assetAddress: positionBefore?.asset,
           }),
         ];
-      });
+      }, { successMessage: "Claim confirmed" });
 
       if (walletForInvalidation) {
         invalidateAfterOnChainWrite(queryClient, walletForInvalidation);

@@ -83,7 +83,7 @@ export function useInitialize() {
           });
 
           return [initIx];
-        });
+        }, { successMessage: "Campaign initialized" });
 
         let registrySaved = false;
         let registryPersistError: string | undefined;

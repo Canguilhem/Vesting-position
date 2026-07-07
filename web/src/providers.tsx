@@ -5,6 +5,7 @@ import { autoDiscover, createClient } from "@solana/client";
 import { RPC_ENDPOINT } from "./config";
 import { createQueryClient } from "./lib/query-client";
 import { QueryDevtools } from "./QueryDevtools";
+import { Toaster } from "./components/ui/sonner";
 
 const websocketEndpoint = RPC_ENDPOINT.replace("https://", "wss://").replace(
   "http://",
@@ -23,6 +24,7 @@ export function Providers({ children }: PropsWithChildren) {
   return (
     <QueryClientProvider client={queryClient}>
       <SolanaProvider client={client}>{children}</SolanaProvider>
+      <Toaster />
       <QueryDevtools />
     </QueryClientProvider>
   );

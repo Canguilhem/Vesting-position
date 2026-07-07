@@ -51,7 +51,7 @@ export function useTransferPosition(position: PositionRecord) {
               newOwner,
             }),
           ];
-        });
+        }, { successMessage: "Position NFT transferred" });
 
         if (walletForInvalidation) {
           invalidateAfterOnChainWrite(queryClient, walletForInvalidation);

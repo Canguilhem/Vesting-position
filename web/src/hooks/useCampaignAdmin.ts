@@ -27,6 +27,29 @@ export type CampaignAdminAction =
   | { type: "closeCampaign" }
   | { type: "excludeAsset"; asset: string };
 
+function adminSuccessMessage(action: CampaignAdminAction): string {
+  switch (action.type) {
+    case "freezeCollection":
+      return action.shouldFreeze ? "Collection frozen" : "Collection unfrozen";
+    case "freezeAsset":
+      return action.shouldFreeze ? "Position NFT frozen" : "Position NFT unfrozen";
+    case "clawback":
+      return "Position clawed back";
+    case "clawbackUnclaimed":
+      return "Unclaimed tokens clawed back";
+    case "cancelCampaign":
+      return "Campaign cancelled";
+    case "closeCampaign":
+      return "Campaign closed";
+    case "excludeAsset":
+      return "Position excluded";
+    default: {
+      const _exhaustive: never = action;
+      return `Admin transaction confirmed: ${String(_exhaustive)}`;
+    }
+  }
+}
+
 export function useCampaignAdmin(record: CampaignRecord) {
   const queryClient = useQueryClient();
   const { sendWithWallet, isSending, signature, error, reset, isConnected } =
@@ -125,7 +148,7 @@ export function useCampaignAdmin(record: CampaignRecord) {
               throw new Error(`Unknown admin action: ${String(_exhaustive)}`);
             }
           }
-        });
+        }, { successMessage: adminSuccessMessage(action) });
 
         invalidateAfterOnChainWrite(queryClient, walletForInvalidation);
         setLastSignature(sig);

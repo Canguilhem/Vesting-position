@@ -57,13 +57,15 @@ export function useCreateToken() {
         const mintSigner = await generateKeyPairSigner();
         const supply = parseCreateTokenSupply(values);
 
-        const sig = await sendWithWallet((walletSigner) =>
-          buildMintSetupTransactionInstructions({
-            authority: walletSigner,
-            mintSigner,
-            decimals: values.decimals,
-            amount: supply,
-          }),
+        const sig = await sendWithWallet(
+          (walletSigner) =>
+            buildMintSetupTransactionInstructions({
+              authority: walletSigner,
+              mintSigner,
+              decimals: values.decimals,
+              amount: supply,
+            }),
+          { successMessage: "Token created" },
         );
 
         const result: CreateTokenResult = {
