@@ -110,9 +110,9 @@ function CalculatorResults({ values }: { values: CalculatorFormValues }) {
         </div>
         <p className="text-xs text-muted-foreground">
           {result.beforeCliff
-            ? "Before cliff — nothing claimable yet (position can still be minted on first claim)."
+            ? "Before cliff: nothing claimable yet (position can still be minted on first claim)."
             : result.fullyVested
-              ? "Fully vested — position becomes a permanent loyalty badge after final claim."
+              ? "Fully vested: position becomes a permanent loyalty badge after final claim."
               : "Linear vesting active between cliff and end."}
         </p>
       </div>
@@ -212,7 +212,7 @@ export function VestingCalculator() {
                 {(field) => (
                   <label className={labelClassName()}>
                     <span className="font-medium">
-                      Cliff duration — {field.state.value} days
+                      Cliff duration: {field.state.value} days
                     </span>
                     <input
                       type="range"
@@ -233,7 +233,7 @@ export function VestingCalculator() {
                 {(field) => (
                   <label className={labelClassName()}>
                     <span className="font-medium">
-                      Cliff release — {formatPercent(field.state.value)}
+                      Cliff release: {formatPercent(field.state.value)}
                     </span>
                     <input
                       type="range"

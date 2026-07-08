@@ -20,7 +20,7 @@ const PHASES = [
     key: "vesting",
     title: "Vesting",
     badge: "Claims open",
-    gradient: "from-emerald-500 to-chart-2",
+    gradient: "from-emerald-500 via-emerald-400 to-emerald-600",
     recipient:
       "After start, wait out the cliff (if any) then claim the cliff release % and anything vested linearly since. Transfer the NFT to sell remaining upside.",
     creator: "Tokens stream out as recipients claim.",
@@ -29,7 +29,7 @@ const PHASES = [
     key: "grace",
     title: "Grace period",
     badge: "Last chance",
-    gradient: "from-amber-500 to-chart-5",
+    gradient: "from-amber-500 via-amber-400 to-amber-600",
     recipient: "Vesting is done: claim any remainder before the window closes.",
     creator: "Wait; clawback is not available yet.",
   },
@@ -37,7 +37,7 @@ const PHASES = [
     key: "clawback",
     title: "After grace",
     badge: "Clawback open",
-    gradient: "from-red-500 to-chart-4",
+    gradient: "from-red-500 via-red-400 to-red-600",
     recipient: "Unclaimed allocations are gone: creator can recover them.",
     creator: "Claw back unclaimed tokens from no-shows.",
   },
@@ -118,7 +118,7 @@ export function ClaimingWindowTimeline() {
           <div
             className="absolute inset-y-0 w-0.5 bg-accent"
             style={{ left: `${CLIFF_PCT}%`, transform: "translateX(-50%)" }}
-            title="Cliff end — configurable per campaign"
+            title="Cliff end (configurable per campaign)"
           />
         </div>
 
@@ -196,8 +196,8 @@ export function ClaimingWindowTimeline() {
       </div>
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Cliff is optional per campaign (0 days = no wait). Release % is 0–100%
-        in basis points — e.g. {cliffReleaseLabel} at cliff with{" "}
+        Cliff is optional per campaign (0 days = no wait). Release % is 0-100%
+        in basis points, e.g. {cliffReleaseLabel} at cliff with{" "}
         {100 - EXAMPLE_CLIFF_RELEASE_BPS / 100}% vesting linearly until end. Try
         different values in the{" "}
         <a href="#calculator" className="text-accent hover:underline">

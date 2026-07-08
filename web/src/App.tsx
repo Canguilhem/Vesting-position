@@ -28,6 +28,10 @@ export default function App() {
         <Route element={<SiteLayout />}>
           <Route index element={<MarketingPage />} />
           <Route
+            path="for-projects"
+            element={<Navigate to="/#for-projects" replace />}
+          />
+          <Route
             path="app"
             element={
               <Suspense fallback={<RouteFallback />}>

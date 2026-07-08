@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 
 import Header from "./Header";
 
@@ -20,7 +20,13 @@ export function SiteLayout() {
 
       <footer className="relative z-10 border-t border-border-low">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>Vesting Positions Protocol · MIT License</p>
+          <p>
+            <Link to="/#for-projects" className="text-accent hover:underline">
+              For projects
+            </Link>
+            {" · "}
+            Vesting Positions Protocol · MIT License
+          </p>
           <p>
             Built during{" "}
             <a

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { EXPLORER_PROGRAM_URL, PROGRAM_ID } from "../config";
 import { VestingCalculator } from "../components/VestingCalculator";
 import { ClaimingWindowTimeline } from "../components/ClaimingWindowTimeline";
+import { ForProjectsSection } from "../components/marketing/ForProjectsSection";
 import {
   ExternalLinkIcon,
   TruncatedExplorerLink,
@@ -86,10 +87,13 @@ export function MarketingPage() {
           </Badge>
           <div className="flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <a href="#calculator">Try the simulator</a>
+              <Link to="/app">Launch on devnet</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link to="/app">Open devnet app</Link>
+              <a href="#for-projects">Contact for a demo</a>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <a href="#calculator">Try the simulator</a>
             </Button>
             <Button asChild variant="outline" size="lg">
               <a
@@ -99,7 +103,7 @@ export function MarketingPage() {
                 className="inline-flex items-center gap-2"
               >
                 <ExternalLinkIcon size={16} />
-                View on Explorer
+                Explorer
               </a>
             </Button>
           </div>
@@ -138,7 +142,7 @@ export function MarketingPage() {
         id="program"
         variant="elevated"
         padding="xl"
-        className="scroll-mt-24 gap-4"
+        className="scroll-mt-24 gap-4 mb-20"
       >
         <PageHeader
           eyebrow="On-chain"
@@ -154,6 +158,8 @@ export function MarketingPage() {
           </div>
         </AppCard>
       </AppCard>
+
+      <ForProjectsSection />
     </main>
   );
 }

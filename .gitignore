@@ -9,3 +9,6 @@ web/.env
 
 .surfpool
 tmp/
+
+# Internal GTM playbooks (not for the repo)
+docs/gtm/
