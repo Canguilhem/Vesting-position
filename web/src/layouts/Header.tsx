@@ -16,15 +16,6 @@ const Header = () => {
         </Link>
 
         <nav className="hidden items-center gap-6 text-sm md:flex">
-          <Link to="/#for-projects" className={navLinkClass(false)}>
-            For projects
-          </Link>
-          <Link to="/#how-it-works" className={navLinkClass(false)}>
-            How it works
-          </Link>
-          <Link to="/#calculator" className={navLinkClass(false)}>
-            Simulator
-          </Link>
           <NavLink
             to="/app"
             end
@@ -38,6 +29,15 @@ const Header = () => {
           >
             Profile
           </NavLink>
+          <Link to="/#how-it-works" className={navLinkClass(false)}>
+            How it works
+          </Link>
+          <Link to="/#calculator" className={navLinkClass(false)}>
+            Simulator
+          </Link>
+          <Link to="/#for-projects" className={navLinkClass(false)}>
+            For projects
+          </Link>
         </nav>
 
         <WalletButton />

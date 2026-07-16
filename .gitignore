@@ -12,3 +12,4 @@ tmp/
 
 # Internal GTM playbooks (not for the repo)
 docs/gtm/
+DESIGN.md
